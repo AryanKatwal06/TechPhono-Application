@@ -1,29 +1,37 @@
 {
   "expo": {
-    "name": "TechPhono-Repair-App",
-    "slug": "TechPhono-Repair-App",
+    "name": "TechPhono",
+    "slug": "TechPhono",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "techphonorepairapp",
+    "scheme": "techphono",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "updates": {
+      "enabled": false
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.techphono.repair"
     },
     "android": {
+      "package": "com.techphono.repair",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#E6F4FE"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.VIBRATE"
+      ]
     },
     "web": {
-      "output": "static",
       "favicon": "./assets/images/favicon.png"
+    },
+    "paths": {
+      "auth/callback": "auth/callback"
     },
     "plugins": [
       "expo-router",

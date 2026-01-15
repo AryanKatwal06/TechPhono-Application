@@ -1,50 +1,348 @@
-# Welcome to your Expo app 👋
+🔧 TechPhono – Mobile Repair & Service Management Application
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+TechPhono is a full-stack mobile repair service management application built using Expo (React Native) and Supabase.
+The app is designed to streamline the entire mobile repair workflow — from user booking, admin repair management, real-time status tracking, to service & shop item management.
 
-## Get started
+The project follows a production-ready architecture, focusing on scalability, real-time synchronization, clean UI, and robust authentication.
 
-1. Install dependencies
+📱 What is TechPhono?
 
-   ```bash
-   npm install
-   ```
+TechPhono is a customer–admin based repair ecosystem where:
 
-2. Start the app
+Users can:
 
-   ```bash
-   npx expo start
-   ```
+Register & log in securely
 
-In the output, you'll find options to open the app in a
+Book repair requests
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+Track repair status in real time
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+View repair history
 
-## Get a fresh project
+Cancel requests when needed
 
-When you're ready, run:
+Browse available services and shop items
 
-```bash
-npm run reset-project
-```
+Admins can:
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Log in through a protected admin panel
 
-## Learn more
+View and manage incoming repair requests
 
-To learn more about developing your project with Expo, look at the following resources:
+Update repair status step-by-step
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Add notes for each repair
 
-## Join the community
+Mark repairs as completed or cancelled
 
-Join our community of developers creating universal apps.
+Manage services and shop items (add/delete)
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+View full repair history
+
+All data is synced instantly between user and admin using Supabase real-time capabilities.
+
+🧠 Core Philosophy
+
+The app is built with the following principles:
+
+Single Source of Truth → Supabase Database
+
+No AsyncStorage for Auth Logic → Fully Supabase-driven
+
+Real-time Sync → Admin updates reflect instantly on user side
+
+Clean UI/UX → Proper spacing, padding, and smooth interactions
+
+Scalable Architecture → Easy to extend features later
+
+🧩 Tech Stack
+Frontend (Mobile App)
+
+Expo (React Native)
+
+TypeScript
+
+Expo Router (File-based routing)
+
+React Context API
+
+Expo Vector Icons / Lucide Icons
+
+Expo Haptics
+
+Expo Image Picker
+
+Backend & Database
+
+Supabase
+
+Authentication (Email & Password)
+
+PostgreSQL Database
+
+Row Level Security (RLS)
+
+Real-time subscriptions
+
+Tooling
+
+Node.js
+
+npm
+
+Git
+
+Expo Go (for testing)
+
+🏗️ Application Architecture
+1️⃣ Authentication Layer
+
+Supabase Auth handles:
+
+Email + Password login
+
+Email verification
+
+Forgot password via email OTP
+
+Admin access is determined by email-based role logic
+
+Sessions are persisted securely via Supabase
+
+2️⃣ User Layer
+
+Users interact with:
+
+Home screen
+
+Booking screen
+
+Track repair screen
+
+Repair history
+
+Profile & logout
+
+3️⃣ Admin Layer
+
+Admins have:
+
+Admin dashboard
+
+Active repair requests
+
+Repair details screen
+
+Repair status timeline
+
+Notes section
+
+Manage services
+
+Manage shop items
+
+History view
+
+4️⃣ Database Layer
+
+Supabase PostgreSQL tables handle:
+
+Users
+
+Repairs
+
+Repair status
+
+Services
+
+Shop items
+
+History records
+
+🗂️ Project Folder Structure
+TechPhono-Repair-App
+│
+├── app/
+│   ├── (tabs)/                # Bottom tab navigation
+│   ├── admin/                 # Admin screens
+│   ├── auth/                  # Login, Register, Reset Password
+│   ├── booking.tsx            # Repair booking
+│   ├── track-repair.tsx       # Live repair tracking
+│   ├── repair-history.tsx     # User repair history
+│   └── index.tsx              # Entry screen
+│
+├── components/
+│   ├── RepairTimeline.tsx
+│   └── UI components
+│
+├── context/
+│   └── AuthContext.tsx        # Central auth logic
+│
+├── constants/
+│   └── theme.ts               # Colors, spacing, shadows
+│
+├── services/
+│   └── supabaseClient.ts      # Supabase configuration
+│
+├── assets/
+│   └── images, logos
+│
+├── app.json
+├── package.json
+└── README.md
+
+🔐 Authentication Flow
+Registration
+
+User signs up using email & password
+
+Supabase handles verification
+
+User metadata is stored securely
+
+Admin role is determined internally (email-based)
+
+Login
+
+Email + password login
+
+Session persists across app restarts
+
+Admin users are redirected to admin dashboard
+
+Forgot Password
+
+User enters email
+
+Supabase sends password reset email
+
+Secure OTP-based reset
+
+🛠️ Repair Booking Flow
+
+User submits repair request
+
+Status defaults to Received
+
+Request appears instantly on admin dashboard
+
+Admin updates repair stages:
+
+Received
+
+Diagnosing
+
+Repairing
+
+Repaired
+
+Completed
+
+User sees real-time updates
+
+Completed or cancelled requests move to history automatically
+
+📊 Repair Status Management
+
+Status updates are controlled only by admin
+
+Notes can be added per repair
+
+Users have read-only access to status
+
+Completed & cancelled requests are:
+
+Removed from active list
+
+Added to history with proper labels
+
+🛍️ Services & Shop Items
+Admin Capabilities
+
+Add services
+
+Delete services
+
+Add shop items (with image, price, description)
+
+Delete shop items
+
+Changes reflect instantly on user side
+
+User Capabilities
+
+View updated services
+
+Browse shop items
+
+UI remains consistent for new items
+
+🔄 Real-Time Sync
+
+Supabase subscriptions ensure:
+
+Fast updates
+
+No manual refresh needed
+
+Pull-to-refresh is also implemented for reliability
+
+⚙️ Environment Setup
+Required Environment Variables
+
+Create .env (or use Expo secrets):
+
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+
+▶️ Running the Project
+Install Dependencies
+npm install
+
+Start Expo
+npx expo start
+
+
+Use Expo Go
+
+Recommended: Tunnel or LAN
+
+Web build supported but mobile is primary
+
+🧪 Common Issues & Fixes
+App stuck on loading
+
+Clear cache: npx expo start -c
+
+Check Supabase env variables
+
+Admin page not opening
+
+Ensure admin email matches configured email
+
+Verify session logic in AuthContext
+
+Requests not syncing
+
+Check Supabase real-time enabled
+
+Verify RLS policies
+
+🚀 Future Enhancements
+
+Push notifications for status updates
+
+Payment integration
+
+Technician role
+
+Repair cost estimation
+
+Multi-admin support
+
+Analytics dashboard
+
+📄 License
+
+This project is for educational and demonstration purposes.
+You are free to modify, extend, and deploy it as needed.
