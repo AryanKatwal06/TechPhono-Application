@@ -1,9 +1,9 @@
 # 🔧 TechPhono – Mobile Repair & Service Management Application
 
-**TechPhono** is a full-stack mobile repair service management application built using **Expo (React Native)** and **Supabase**.  
+TechPhono is a **full-stack mobile repair service management application** built using **Expo (React Native)** and **Supabase**.  
 The app is designed to streamline the entire mobile repair workflow — from user booking, admin repair management, real-time status tracking, to service & shop item management.
 
-The project follows a **production-ready architecture**, focusing on scalability, real-time synchronization, clean UI, and robust authentication.
+The project follows a **production-ready architecture**, focusing on **scalability**, **real-time synchronization**, **clean UI**, and **robust authentication**.
 
 ---
 
@@ -28,7 +28,7 @@ TechPhono is a **customer–admin based repair ecosystem** where:
 - Manage services and shop items (add/delete)  
 - View full repair history  
 
-> All data is synced instantly between user and admin using **Supabase real-time capabilities**.
+➡️ All data is synced instantly between user and admin using **Supabase real-time capabilities**.
 
 ---
 
@@ -80,8 +80,6 @@ Supabase Auth handles:
 - Admin access via email-based role logic  
 - Secure session persistence  
 
----
-
 ### 2️⃣ User Layer
 Users interact with:
 - Home screen  
@@ -89,8 +87,6 @@ Users interact with:
 - Track repair screen  
 - Repair history  
 - Profile & logout  
-
----
 
 ### 3️⃣ Admin Layer
 Admins have access to:
@@ -102,8 +98,6 @@ Admins have access to:
 - Manage services  
 - Manage shop items  
 - History view  
-
----
 
 ### 4️⃣ Database Layer
 Supabase PostgreSQL tables handle:
@@ -118,171 +112,188 @@ Supabase PostgreSQL tables handle:
 
 ## 🗂️ Project Folder Structure
 
-TechPhono-Repair-App
-│
-├── app/                         # Expo Router (App entry point)
-│   ├── (tabs)/                  # Bottom tab navigation (User)
-│   │   ├── index.tsx            # Home screen
-│   │   ├── booking.tsx          # Repair booking screen
-│   │   ├── track-repair.tsx     # Live repair tracking
-│   │   ├── repair-history.tsx   # User repair history
-│   │   └── profile.tsx          # User profile & logout
-│   │
-│   ├── admin/                   # Admin-only screens
-│   │   ├── index.tsx            # Admin dashboard
-│   │   ├── repair-details.tsx   # Repair detail & timeline
-│   │   ├── manage-services.tsx  # Add/Delete services
-│   │   ├── manage-items.tsx     # Add/Delete shop items
-│   │   └── history.tsx          # Completed & cancelled repairs
-│   │
-│   ├── auth/                    # Authentication screens
-│   │   ├── login.tsx            # Login screen
-│   │   ├── register.tsx         # Registration screen
-│   │   └── reset-password.tsx   # Forgot password flow
-│   │
-│   ├── index.tsx                # App entry / role-based redirect
-│   └── _layout.tsx              # Root layout configuration
-│
-├── components/                  # Reusable UI components
-│   ├── RepairTimeline.tsx       # Repair status timeline
-│   ├── ServiceCard.tsx          # Service UI card
-│   ├── ShopItemCard.tsx         # Shop item UI card
-│   └── LoadingIndicator.tsx     # Global loading component
-│
-├── context/                     # Global state management
-│   └── AuthContext.tsx          # Authentication & session logic
-│
-├── services/                    # External services
-│   └── supabaseClient.ts        # Supabase configuration & client
-│
-├── constants/                   # App-wide constants
-│   └── theme.ts                 # Colors, spacing, shadows
-│
-├── assets/                      # Static assets
-│   ├── images/                 # App images
-│   └── icons/                  # App icons
-│
-├── types/                       # TypeScript types & interfaces
-│   └── index.ts                # Shared types
-│
-├── utils/                       # Helper functions
-│   └── formatDate.ts           # Utility helpers
-│
-├── .env                         # Environment variables
-├── app.json                     # Expo configuration
-├── package.json                 # Dependencies & scripts
-├── tsconfig.json                # TypeScript configuration
-└── README.md                    # Project documentation
+```text
+TechPhono-Repair-App/
+├── app/
+│   ├── (tabs)/
+│   │   ├── index.tsx              # Home screen
+│   │   ├── booking.tsx            # Repair booking screen
+│   │   ├── track-repair.tsx       # Live repair tracking
+│   │   ├── repair-history.tsx     # User repair history
+│   │   └── profile.tsx            # User profile & logout
+│   ├── admin/
+│   │   ├── index.tsx              # Admin dashboard
+│   │   ├── repair-details.tsx     # Repair detail & timeline
+│   │   ├── manage-services.tsx    # Add/Delete services
+│   │   ├── manage-items.tsx       # Add/Delete shop items
+│   │   └── history.tsx            # Completed & cancelled repairs
+│   ├── auth/
+│   │   ├── login.tsx              # Login screen
+│   │   ├── register.tsx           # Registration screen
+│   │   └── reset-password.tsx     # Forgot password flow
+│   ├── index.tsx                  # App entry / role-based redirect
+│   └── _layout.tsx                # Root layout configuration
+├── components/
+│   ├── RepairTimeline.tsx         # Repair status timeline
+│   ├── ServiceCard.tsx            # Service UI card
+│   ├── ShopItemCard.tsx           # Shop item UI card
+│   └── LoadingIndicator.tsx       # Global loading component
+├── context/
+│   └── AuthContext.tsx             # Authentication & session logic
+├── services/
+│   └── supabaseClient.ts           # Supabase configuration & client
+├── constants/
+│   └── theme.ts                    # Colors, spacing, shadows
+├── assets/
+│   ├── images/
+│   └── icons/
+├── types/
+│   └── index.ts                    # Shared types
+├── utils/
+│   └── formatDate.ts               # Utility helpers
+├── .env                            # Environment variables
+├── app.json                        # Expo configuration
+├── package.json                    # Dependencies & scripts
+├── tsconfig.json                   # TypeScript configuration
+└── README.md                       # Project documentation
 
----
+🔐 Authentication Flow
+📝 Registration
 
-## 🔐 Authentication Flow
+User signs up using email & password
 
-### 📝 Registration
-- User signs up using email & password  
-- Supabase handles verification  
-- User metadata is stored securely  
-- Admin role is determined internally (email-based)  
+Supabase handles verification
 
-### 🔑 Login
-- Email + password authentication  
-- Session persists across app restarts  
-- Admin users are redirected to the admin dashboard  
+User metadata is stored securely
 
-### 🔄 Forgot Password
-- User enters email  
-- Supabase sends password reset email  
-- Secure OTP-based reset flow  
+Admin role is determined internally (email-based)
 
----
+🔑 Login
 
-## 🛠️ Repair Booking Flow
-1. User submits a repair request  
-2. Status defaults to **Received**  
-3. Request appears instantly on admin dashboard  
-4. Admin updates repair stages:
-   - Received  
-   - Diagnosing  
-   - Repairing  
-   - Repaired  
-   - Completed  
-5. User sees real-time updates  
-6. Completed or cancelled requests move to history automatically  
+Email + password authentication
 
----
+Session persists across app restarts
 
-## 📊 Repair Status Management
-- Status updates are controlled only by admin  
-- Notes can be added per repair  
-- Users have read-only access to repair status  
-- Completed & cancelled requests are:
-  - Removed from active list  
-  - Added to history with proper labels  
+Admin users are redirected to the admin dashboard
 
----
+🔄 Forgot Password
 
-## 🛍️ Services & Shop Items
+User enters email
 
-### 👨‍💼 Admin Capabilities
-- Add services  
-- Delete services  
-- Add shop items (image, price, description)  
-- Delete shop items  
+Supabase sends password reset email
 
-### 👤 User Capabilities
-- View updated services  
-- Browse shop items  
-- Consistent UI for newly added items  
+Secure OTP-based reset flow
 
-> All changes reflect instantly on the user side.
+🛠️ Repair Booking Flow
 
----
+User submits a repair request
 
-## 🔄 Real-Time Sync
+Status defaults to Received
+
+Request appears instantly on admin dashboard
+
+Admin updates repair stages:
+
+Received
+
+Diagnosing
+
+Repairing
+
+Repaired
+
+Completed
+
+User sees real-time updates
+
+Completed or cancelled requests move to history automatically
+
+📊 Repair Status Management
+
+Status updates are controlled only by admin
+
+Notes can be added per repair
+
+Users have read-only access to repair status
+
+Completed & cancelled requests are:
+
+Removed from active list
+
+Added to history with proper labels
+
+🛍️ Services & Shop Items
+👨‍💼 Admin Capabilities
+
+Add services
+
+Delete services
+
+Add shop items (image, price, description)
+
+Delete shop items
+
+👤 User Capabilities
+
+View updated services
+
+Browse shop items
+
+Consistent UI for newly added items
+
+➡️ All changes reflect instantly on the user side.
+
+🔄 Real-Time Sync
+
 Supabase subscriptions ensure:
-- Fast updates  
-- No manual refresh needed  
-- Pull-to-refresh for added reliability  
 
----
+Fast updates
 
-## ⚙️ Environment Setup
+No manual refresh needed
 
-### Required Environment Variables
+Pull-to-refresh for added reliability
+
+⚙️ Environment Setup
+Required Environment Variables
+
+Add Supabase keys and URLs to .env.
+
 Install Dependencies
-bash
-Copy code
 npm install
+
 Start Expo
-bash
-Copy code
 npx expo start
-Use Expo Go
 
-Recommended: Tunnel or LAN
 
-Web build supported, but mobile is primary
+Use Expo Go for testing.
+Recommended: Tunnel or LAN mode.
+
+Web build is supported, but mobile is primary.
 
 🧪 Common Issues & Fixes
 App stuck on loading
+
 Clear cache:
 
-bash
-Copy code
 npx expo start -c
-Check Supabase environment variables
+
+
+Check Supabase environment variables.
 
 Admin page not opening
+
 Ensure admin email matches configured email
 
 Verify session logic in AuthContext
 
 Requests not syncing
+
 Check Supabase real-time is enabled
 
 Verify RLS policies
 
 🚀 Future Enhancements
+
 Push notifications for status updates
 
 Payment integration
@@ -296,4 +307,5 @@ Multi-admin support
 Analytics dashboard
 
 📄 License
+
 This project is for educational and demonstration purposes.
