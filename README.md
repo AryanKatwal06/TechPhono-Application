@@ -120,37 +120,59 @@ Supabase PostgreSQL tables handle:
 
 TechPhono-Repair-App
 │
-├── app/
-│ ├── (tabs)/ # Bottom tab navigation
-│ ├── admin/ # Admin screens
-│ ├── auth/ # Login, Register, Reset Password
-│ ├── booking.tsx # Repair booking
-│ ├── track-repair.tsx # Live repair tracking
-│ ├── repair-history.tsx # User repair history
-│ └── index.tsx # Entry screen
+├── app/                         # Expo Router (App entry point)
+│   ├── (tabs)/                  # Bottom tab navigation (User)
+│   │   ├── index.tsx            # Home screen
+│   │   ├── booking.tsx          # Repair booking screen
+│   │   ├── track-repair.tsx     # Live repair tracking
+│   │   ├── repair-history.tsx   # User repair history
+│   │   └── profile.tsx          # User profile & logout
+│   │
+│   ├── admin/                   # Admin-only screens
+│   │   ├── index.tsx            # Admin dashboard
+│   │   ├── repair-details.tsx   # Repair detail & timeline
+│   │   ├── manage-services.tsx  # Add/Delete services
+│   │   ├── manage-items.tsx     # Add/Delete shop items
+│   │   └── history.tsx          # Completed & cancelled repairs
+│   │
+│   ├── auth/                    # Authentication screens
+│   │   ├── login.tsx            # Login screen
+│   │   ├── register.tsx         # Registration screen
+│   │   └── reset-password.tsx   # Forgot password flow
+│   │
+│   ├── index.tsx                # App entry / role-based redirect
+│   └── _layout.tsx              # Root layout configuration
 │
-├── components/
-│ ├── RepairTimeline.tsx
-│ └── UI components
+├── components/                  # Reusable UI components
+│   ├── RepairTimeline.tsx       # Repair status timeline
+│   ├── ServiceCard.tsx          # Service UI card
+│   ├── ShopItemCard.tsx         # Shop item UI card
+│   └── LoadingIndicator.tsx     # Global loading component
 │
-├── context/
-│ └── AuthContext.tsx # Central auth logic
+├── context/                     # Global state management
+│   └── AuthContext.tsx          # Authentication & session logic
 │
-├── constants/
-│ └── theme.ts # Colors, spacing, shadows
+├── services/                    # External services
+│   └── supabaseClient.ts        # Supabase configuration & client
 │
-├── services/
-│ └── supabaseClient.ts # Supabase configuration
+├── constants/                   # App-wide constants
+│   └── theme.ts                 # Colors, spacing, shadows
 │
-├── assets/
-│ └── images, logos
+├── assets/                      # Static assets
+│   ├── images/                 # App images
+│   └── icons/                  # App icons
 │
-├── app.json
-├── package.json
-└── README.md
-
-yaml
-Copy code
+├── types/                       # TypeScript types & interfaces
+│   └── index.ts                # Shared types
+│
+├── utils/                       # Helper functions
+│   └── formatDate.ts           # Utility helpers
+│
+├── .env                         # Environment variables
+├── app.json                     # Expo configuration
+├── package.json                 # Dependencies & scripts
+├── tsconfig.json                # TypeScript configuration
+└── README.md                    # Project documentation
 
 ---
 
@@ -227,12 +249,6 @@ Supabase subscriptions ensure:
 ## ⚙️ Environment Setup
 
 ### Required Environment Variables
-Create a `.env` file (or use Expo secrets):
-
-```env
-EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-▶️ Running the Project
 Install Dependencies
 bash
 Copy code
