@@ -230,69 +230,108 @@ TechPhono-Repair-App
 
 > All changes reflect instantly on the user side.
 
-🔄 Real-Time Sync
+# 📱 Real-Time Sync with Supabase
+
+This project uses **Supabase subscriptions** to enable real-time data synchronization, ensuring a smooth and responsive user experience.
+
+---
+
+## 🔄 Real-Time Sync
 
 Supabase subscriptions ensure:
 
-Fast updates
+- ⚡ Fast updates
+- 🔄 No manual refresh required
+- 👆 Pull-to-refresh for added reliability
 
-No manual refresh needed
+---
 
-Pull-to-refresh for added reliability
+## ⚙️ Environment Setup
 
-⚙️ Environment Setup
-Required Environment Variables
+### 📌 Required Environment Variables
 
-Add Supabase keys and URLs to .env.
+Add your Supabase credentials to a `.env` file:
 
-Install Dependencies
+```env
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+---
+
+## 📦 Installation
+
+Install all required dependencies:
+
+```bash
 npm install
+```
 
-Start Expo
+---
+
+## ▶️ Running the App
+
+Start the Expo development server:
+
+```bash
 npx expo start
+```
 
+### 📲 Testing Options
 
-Use Expo Go for testing.
-Recommended: Tunnel or LAN mode.
+- Use **Expo Go** for testing
+- Recommended modes:
+  - **Tunnel**
+  - **LAN**
+- 🌐 Web build is supported, but **mobile is the primary platform**
 
-Web build is supported, but mobile is primary.
+---
 
-🧪 Common Issues & Fixes
-App stuck on loading
+## 🧪 Common Issues & Fixes
 
-Clear cache:
+### ⏳ App Stuck on Loading
 
+**Fix:**
+
+```bash
 npx expo start -c
+```
 
+- Check Supabase environment variables
+- Ensure `.env` file is correctly loaded
 
-Check Supabase environment variables.
+---
 
-Admin page not opening
+### 🔐 Admin Page Not Opening
 
-Ensure admin email matches configured email
+**Fix:**
 
-Verify session logic in AuthContext
+- Ensure admin email matches the configured email
+- Verify session logic inside `AuthContext`
 
-Requests not syncing
+---
 
-Check Supabase real-time is enabled
+### 🔁 Requests Not Syncing
 
-Verify RLS policies
+**Fix:**
 
-🚀 Future Enhancements
+- Ensure **Supabase Realtime** is enabled
+- Verify **Row Level Security (RLS)** policies
+- Check subscription listeners
 
-Push notifications for status updates
+---
 
-Payment integration
+## 🚀 Future Enhancements
 
-Technician role
+- 🔔 Push notifications for status updates
+- 💳 Payment integration
+- 🧑‍🔧 Technician role support
+- 💰 Repair cost estimation
+- 👥 Multi-admin support
+- 📊 Analytics dashboard
 
-Repair cost estimation
+---
 
-Multi-admin support
+## 📄 License
 
-Analytics dashboard
-
-📄 License
-
-This project is for educational and demonstration purposes.
+This project is intended for **educational and demonstration purposes only**.
