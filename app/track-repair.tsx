@@ -29,6 +29,34 @@ export default function TrackRepairScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const testConnection = async () => {
+    try {
+      console.log('🔧 Testing Supabase connection...');
+      const { data, error } = await supabase!
+        .from('repairs')
+        .select('job_id, status, device_type')
+        .limit(5);
+      
+      console.log('📋 Existing repairs:', data);
+      console.log('❌ Connection error:', error);
+      
+      if (data && data.length > 0) {
+        console.log('✅ Found sample Job IDs:', data.map(r => r.job_id));
+      }
+    } catch (err) {
+      console.error('💥 Connection test failed:', err);
+    }
+  };
+
+  const getTimelineInfo = (status: string | undefined) => {
+    if (!status) return { currentIndex: -1 };
+    const currentStatus = status.toLowerCase();
+    const steps = ['received', 'diagnosing', 'repairing', 'repaired', 'completed'];
+    const currentIndex = steps.indexOf(currentStatus);
+    return { steps, currentIndex };
+  };
+
+  // Add a fallback for testing
   const handleTrack = useCallback(async (id?: string) => {
     const searchId = id || jobId.trim();
 
@@ -45,26 +73,44 @@ export default function TrackRepairScreen() {
     setError('');
 
     try {
+      console.log('🔍 Searching for Job ID:', searchId);
+      console.log('📡 Supabase URL:', process.env.EXPO_PUBLIC_SUPABASE_URL);
+      
       const { data, error } = await supabase!
         .from('repairs')
         .select('*')
         .eq('job_id', searchId)
         .single();
 
-      if (error || !data) {
+      console.log('📊 Query result:', { data, error });
+
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        if (!repair) { 
+            setError(`Database error: ${error.message}`);
+            Alert.alert('Database Error', error.message);
+        }
+      } else if (!data) {
+        console.warn('⚠️ No data found for Job ID:', searchId);
         if (!repair) { 
             setError('Job ID not found. Please check and try again.');
             Alert.alert('Not Found', 'Invalid Job ID');
         }
       } else {
+        console.log('✅ Repair data found:', data);
         setRepair(data);
       }
-    } catch {
+    } catch (err) {
+      console.error('💥 Unexpected error:', err);
       setError('An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
-  }, [jobId, repair, params.jobId]);
+  }, [jobId, params.jobId, repair]);
+
+  useEffect(() => {
+    testConnection();
+  }, []);
 
   useEffect(() => {
     if (!jobId) return;
@@ -80,7 +126,10 @@ export default function TrackRepairScreen() {
         { event: '*', schema: 'public', table: 'repairs' },
         (payload) => {
           if ((payload.new as Repair)?.job_id === jobId) {
-            handleTrack(jobId);
+            // Directly update the repair data without calling handleTrack
+            const updatedRepair = payload.new as Repair;
+            console.log('🔄 Real-time update received:', updatedRepair);
+            setRepair(updatedRepair);
           }
         }
       )
@@ -104,9 +153,9 @@ export default function TrackRepairScreen() {
     if (params.jobId) {
       setError('');
       setRepair(null);
-      handleTrack(params.jobId);
+      setJobId(params.jobId);
     }
-  }, [params.jobId, handleTrack]);
+  }, [params.jobId]);
 
   const cancelRequest = async () => {
     if (!repair) return;
@@ -137,14 +186,6 @@ export default function TrackRepairScreen() {
         },
       ]
     );
-  };
-
-  const getTimelineInfo = (status: string | undefined) => {
-    if (!status) return { currentIndex: -1 };
-    const currentStatus = status.toLowerCase();
-    const steps = ['received', 'diagnosing', 'repairing', 'repaired', 'completed'];
-    const currentIndex = steps.indexOf(currentStatus);
-    return { steps, currentIndex };
   };
 
   return (

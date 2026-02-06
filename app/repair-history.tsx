@@ -35,7 +35,7 @@ export default function ProfileScreen() {
           .from('repairs')
           .select('*')
           .eq('phone', userPhone)
-          .in('status', ['completed', 'cancelled'])
+          .in('status', ['Completed', 'Cancelled'])
           .order('created_at', { ascending: false });
         if (error) throw error;
         setRepairs(data || []);
@@ -69,23 +69,7 @@ export default function ProfileScreen() {
       },
     ]);
   };
-  const handleDeleteHistoryItem = async (id: string) => {
-    try {
-      if (Platform.OS !== 'web') await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      const { error } = await (supabase as any)
-        .from('repairs')
-        .update({
-          is_deleted: true,
-          deleted_at: new Date().toISOString(),
-        })
-        .eq('id', id);
-      if (error) throw error;
-      setRepairs((prev) => prev.filter((repair) => repair.id !== id));
-    } catch (error) {
-      console.error('Delete item error:', error);
-      Alert.alert('Error', 'Failed to delete repair from history.');
-    }
-  };
+
   const getStatusColor = (status: string) => {
     const s = status.toLowerCase();
     switch (s) {
@@ -159,9 +143,6 @@ export default function ProfileScreen() {
                 <Text style={styles.date}>
                   {new Date(repair.created_at).toLocaleDateString()}
                 </Text>
-                <Pressable onPress={() => handleDeleteHistoryItem(repair.id)}>
-                  <Text style={styles.deleteItemText}>Remove</Text>
-                </Pressable>
               </View>
             </View>
           ))

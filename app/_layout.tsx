@@ -3,7 +3,7 @@ import { TechPhonoProvider } from '@/context/TechPhonoContext';
 import { supabase } from '@/services/supabaseClient';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Linking from 'expo-linking';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -40,7 +40,7 @@ function AppNavigator() {
                           cleanUrl.includes('auth') ||
                           cleanUrl.includes('access_token');
         if (isCallback) {
-          const [pathPart, paramsPart] = cleanUrl.includes('#')
+          const [, paramsPart] = cleanUrl.includes('#')
             ? cleanUrl.split('#')
             : cleanUrl.split('?');
           const params = new URLSearchParams(paramsPart || '');
@@ -57,14 +57,10 @@ function AppNavigator() {
             isProcessing = false;
             return;
           }
-          const { data, error } = await supabase.auth.setSession({
+          await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken || '',
           });
-          if (error) {
-            isProcessing = false;
-            return;
-          }
           setTimeout(() => {
             router.replace('/(tabs)');
             isProcessing = false;
@@ -72,7 +68,7 @@ function AppNavigator() {
         } else {
           isProcessing = false;
         }
-      } catch (error) {
+      } catch {
         isProcessing = false;
       }
     };

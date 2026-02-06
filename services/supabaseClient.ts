@@ -1,13 +1,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error(
-    '❌ Missing Supabase env vars. Check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY'
-  );
+import { SecurityConfig } from '../config/security';
+
+// Validate configuration on import
+try {
+  SecurityConfig.validateConfig();
+} catch (error) {
+  console.error('❌ Security configuration error:', error);
+  throw error;
 }
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+
+const supabaseUrl = SecurityConfig.supabaseUrl;
+const supabaseAnonKey = SecurityConfig.supabaseAnonKey;
+
+// Remove console logs in production for security
+if (SecurityConfig.isDebugMode) {
+  console.log('🔧 Supabase Client - URL:', supabaseUrl);
+  console.log('🔑 Supabase Client - Key configured:', !!supabaseAnonKey);
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,

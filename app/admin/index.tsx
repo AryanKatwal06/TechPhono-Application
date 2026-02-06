@@ -14,6 +14,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { createStatusFilter, getAllStatuses, getActiveStatuses, normalizeStatus } from '@/utils/statusUtils';
+
 export default function AdminHome() {
   const router = useRouter();
   const { user, loading, signOut, isAdmin } = useAuth(); 
@@ -21,26 +23,71 @@ export default function AdminHome() {
   const [pendingRepairs, setPendingRepairs] = useState(0); 
   const [loggingOut, setLoggingOut] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
   const fetchStats = async () => {
     try {
       if (!supabase) return;
+      console.log('🔍 Fetching admin stats...');
+      
+      // DEBUG: Check all repairs first
+      const { data: allRepairs } = await supabase
+        .from('repairs')
+        .select('id, status, is_deleted');
+      console.log('ADMIN REPAIRS:', allRepairs);
+      
+      // Total Repairs (exclude cancelled and deleted) - case-insensitive
+      const cancelledStatuses = createStatusFilter(['cancelled' as any]);
       const { count: total, error: totalError } = await supabase
         .from('repairs')
         .select('*', { count: 'exact', head: true })
+        .not('status', 'in', cancelledStatuses)
         .eq('is_deleted', false);
-      if (totalError) console.error('Error fetching total:', totalError);
+      
+      if (totalError) {
+        console.error('❌ Error fetching total repairs:', totalError);
+        throw totalError;
+      }
+      
+      // Active Repairs (received, diagnosing, repairing, repaired) - case-insensitive
+      const activeStatuses = createStatusFilter(getActiveStatuses());
       const { count: active, error: activeError } = await supabase
         .from('repairs')
         .select('*', { count: 'exact', head: true })
-        .in('status', ['received', 'diagnosing', 'repairing'])
+        .in('status', activeStatuses)
         .eq('is_deleted', false);
-      if (activeError) console.error('Error fetching active:', activeError);
+      
+      if (activeError) {
+        console.error('❌ Error fetching active repairs:', activeError);
+        throw activeError;
+      }
+      
+      console.log(`✅ Stats fetched - Total: ${total}, Active: ${active}`);
       setTotalRepairs(total ?? 0);
       setPendingRepairs(active ?? 0);
+      
+      // Warn about any data issues
+      if (allRepairs) {
+        const issues = [];
+        const deletedCount = allRepairs.filter(r => r.is_deleted).length;
+        const nullStatusCount = allRepairs.filter(r => !r.status).length;
+        const invalidStatusCount = allRepairs.filter(r => 
+          r.status && !normalizeStatus(r.status)
+        ).length;
+        
+        if (deletedCount > 0) issues.push(`${deletedCount} deleted repairs`);
+        if (nullStatusCount > 0) issues.push(`${nullStatusCount} repairs with null status`);
+        if (invalidStatusCount > 0) issues.push(`${invalidStatusCount} repairs with invalid status`);
+        
+        if (issues.length > 0) {
+          console.warn('⚠️ Data issues found:', issues.join(', '));
+        }
+      }
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error('❌ Error fetching admin stats:', error);
+      Alert.alert('Error', 'Failed to fetch repair statistics');
     }
   };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
