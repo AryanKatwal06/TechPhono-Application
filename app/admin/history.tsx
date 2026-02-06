@@ -13,33 +13,46 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { createStatusFilter, formatStatusForDisplay } from '@/utils/statusUtils';
+
 export default function RepairHistoryAdmin() {
   const router = useRouter();
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
   const fetchHistory = async () => {
     try {
+      console.log('🔍 Fetching repair history for admin...');
+      // Use case-insensitive status filter
+      const historyStatuses = createStatusFilter(['completed', 'cancelled' as any]);
       const { data, error } = await supabase
         .from('repairs')
         .select('*')
-        .in('status', ['completed', 'cancelled'])
+        .in('status', historyStatuses)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false });
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error fetching repair history:', error);
+        throw error;
+      }
+      console.log(`✅ Fetched ${data?.length || 0} history records`);
       setHistory(data || []);
     } catch (error: any) {
-      console.error('History fetch error:', error);
-      Alert.alert('Error', error.message);
+      console.error('❌ History fetch error:', error);
+      Alert.alert('Error', 'Failed to fetch repair history: ' + error.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
+
   useFocusEffect(
     useCallback(() => {
       fetchHistory();
     }, [])
   );
+
   useEffect(() => {
     const channel = supabase
       .channel('admin-history-repairs')
@@ -55,10 +68,12 @@ export default function RepairHistoryAdmin() {
       supabase.removeChannel(channel);
     };
   }, []);
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchHistory();
   };
+
   const handleArchive = async (id: string) => {
     Alert.alert(
       'Archive Record',
@@ -85,6 +100,7 @@ export default function RepairHistoryAdmin() {
       ]
     );
   };
+
   const getStatusColor = (status: string) => {
     const normalized = status?.toLowerCase();
     switch (normalized) {
@@ -93,13 +109,14 @@ export default function RepairHistoryAdmin() {
       default: return colors.textSecondary;
     }
   };
+
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={styles.jobId}>{item.job_id}</Text>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
           <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {item.status ? item.status.toUpperCase() : 'UNKNOWN'}
+            {formatStatusForDisplay(item.status)}
           </Text>
         </View>
       </View>

@@ -14,34 +14,79 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { createStatusFilter, getActiveStatuses, isActiveStatus, formatStatusForDisplay } from '@/utils/statusUtils';
+
 export default function RepairsList() {
   const router = useRouter();
   const [repairs, setRepairs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
   const fetchActiveRepairs = async () => {
     try {
       if (!supabase) throw new Error('Supabase not initialized');
+      console.log('🔍 Fetching active repairs for admin...');
+      
+      // Use case-insensitive status filter
+      const activeStatuses = createStatusFilter(getActiveStatuses());
       const { data, error } = await supabase
         .from('repairs')
         .select('*')
-        .in('status', ['received', 'diagnosing', 'repairing', 'repaired']) 
+        .in('status', activeStatuses)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false });
-      if (error) throw error;
+      
+      if (error) {
+        console.error('❌ Error fetching active repairs:', error);
+        throw error;
+      }
+      
+      console.log(`✅ Fetched ${data?.length || 0} active repairs`);
+      
+      // Debug: Log details of fetched repairs
+      if (data && data.length > 0) {
+        console.log('🔍 Active repairs details:', data.map(r => ({
+          job_id: r.job_id,
+          name: r.name,
+          status: r.status,
+          is_deleted: r.is_deleted
+        })));
+      }
+      
+      // Check for any repairs that might be missing using case-insensitive check
+      const { data: allRecentRepairs, error: allError } = await supabase
+        .from('repairs')
+        .select('job_id, name, status, is_deleted')
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      
+      if (!allError && allRecentRepairs) {
+        console.log('🔍 All recent repairs for comparison:', allRecentRepairs);
+        const missingFromActive = allRecentRepairs.filter(r => 
+          !isActiveStatus(r.status)
+        );
+        if (missingFromActive.length > 0) {
+          console.warn('⚠️ Repairs not showing in active list due to status:', missingFromActive);
+        }
+      }
+      
       setRepairs(data || []);
     } catch (error: any) {
-      console.error('Admin fetch error:', error);
-      Alert.alert('Error', error.message);
+      console.error('❌ Admin fetch error:', error);
+      Alert.alert('Error', 'Failed to fetch repair requests: ' + error.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
+
   useFocusEffect(
     useCallback(() => {
       fetchActiveRepairs();
     }, [])
   );
+
   useEffect(() => {
     const channel = supabase
       .channel('admin-active-repairs')
@@ -57,10 +102,12 @@ export default function RepairsList() {
       supabase.removeChannel(channel);
     };
   }, []);
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchActiveRepairs();
   };
+
   const getStatusColor = (status: string) => {
     const normalizedStatus = status?.toLowerCase() || '';
     switch (normalizedStatus) {
@@ -69,9 +116,12 @@ export default function RepairsList() {
       case 'diagnosing': return '#3B82F6';
       case 'repairing': return '#8B5CF6';
       case 'repaired': return '#10B981';
+      case 'completed': return '#10B981';
+      case 'cancelled': return '#EF4444';
       default: return colors.textSecondary;
     }
   };
+
   const renderItem = ({ item }: { item: any }) => (
     <Pressable
       onPress={() => router.push({
@@ -87,7 +137,7 @@ export default function RepairsList() {
         <Text style={styles.jobId}>{item.job_id}</Text>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
           <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {item.status}
+            {formatStatusForDisplay(item.status)}
           </Text>
         </View>
       </View>

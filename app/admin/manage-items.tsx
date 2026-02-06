@@ -1,7 +1,8 @@
 import { supabase } from '@/services/supabaseClient';
 import * as ImagePicker from 'expo-image-picker';
+import { decode } from 'base64-arraybuffer';
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, Image as ImageIcon, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, Image as ImageIcon, Trash2, Crop } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,35 +16,51 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+
+// Define the asset type since expo-image-picker doesn't export it properly
+type ImageAsset = {
+  uri: string;
+  base64?: string;
+  width?: number;
+  height?: number;
+  mimeType?: string;
+};
+
 type Item = {
   id: string;
   name: string;
   description: string;
   price: number;
   image_url: string | null;
-  is_deleted: boolean;
+  is_active: boolean;
   created_at: string;
 };
+
 export default function ManageItems() {
   const router = useRouter();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Form State
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
   const [price, setPrice] = useState('');
-  const [image, setImage] = useState<string | null>(null);
+  const [image, setImage] = useState<ImageAsset | null>(null);
   const [uploading, setUploading] = useState(false);
+
   useEffect(() => {
     fetchItems();
   }, []);
+
   async function fetchItems() {
     setLoading(true);
     const { data, error } = await supabase
       .from('items')
       .select('*')
-      .eq('is_deleted', false)
+      .eq('is_active', true)
       .order('created_at', { ascending: false });
+
     if (error) {
       Alert.alert('Error fetching items', error.message);
     } else {
@@ -51,65 +68,111 @@ export default function ManageItems() {
     }
     setLoading(false);
   }
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchItems();
     setRefreshing(false);
   }, []);
-  async function pickImage() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.7,
-    });
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
+
+  const resetForm = () => {
+    setName('');
+    setDesc('');
+    setPrice('');
+    setImage(null);
+  };
+
+  const pickImage = async () => {
+    try {
+      // Request camera roll permissions
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please grant camera roll permissions to select an image');
+        return;
+      }
+
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        base64: true,
+        allowsEditing: true,
+        aspect: [1, 1],
+      });
+
+      if (pickerResult.canceled) return;
+
+      const asset = pickerResult.assets[0];
+      const imageAsset: ImageAsset = {
+        uri: asset.uri,
+        base64: asset.base64 || undefined,
+        width: asset.width,
+        height: asset.height,
+        mimeType: asset.mimeType || undefined,
+      };
+
+      setImage(imageAsset);
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
     }
-  }
-  async function addItem() {
+  };
+
+  const uploadImage = async () => {
+    if (!image?.base64) throw new Error('No image selected');
+
+    const fileName = `item-${Date.now()}.jpg`;
+
+    const { error } = await supabase.storage
+      .from('items')
+      .upload(fileName, decode(image.base64), {
+        contentType: 'image/jpeg',
+      });
+
+    if (error) {
+      console.error('Image upload error:', error);
+      throw error;
+    }
+
+    const { data } = supabase.storage
+      .from('items')
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  };
+
+  const handleAddItem = async () => {
     if (!name || !price || !image) {
-      Alert.alert('Missing fields', 'Please provide a name, price, and image.');
+      Alert.alert('Missing fields', 'Please provide name, price, and image');
       return;
     }
-    setUploading(true);
-    let publicUrl = null;
+
     try {
-      const response = await fetch(image);
-      const arrayBuffer = await response.arrayBuffer();
-      const fileExt = image.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `${Date.now()}.${fileExt}`;
-      const contentType = `image/${fileExt === 'png' ? 'png' : 'jpeg'}`;
-      const { error: uploadError } = await supabase.storage
-        .from('items')
-        .upload(fileName, arrayBuffer, {
-          contentType: contentType,
-        });
-      if (uploadError) throw uploadError;
-      const { data } = supabase.storage
-        .from('items')
-        .getPublicUrl(fileName);
-      publicUrl = data.publicUrl;
-      const { error: insertError } = await (supabase as any).from('items').insert({
+      setUploading(true);
+
+      const imageUrl = await uploadImage();
+
+      const { error } = await supabase.from('items').insert({
         name,
         description: desc,
-        price: Number(price),
-        image_url: publicUrl,
-        is_deleted: false
+        price: parseFloat(price),
+        image_url: imageUrl,
+        is_active: true
       });
-      if (insertError) throw insertError;
-      setName('');
-      setDesc('');
-      setPrice('');
-      setImage(null);
+
+      if (error) throw error;
+
+      Alert.alert('Success', 'Item added successfully');
+      resetForm();
       fetchItems();
-      Alert.alert('Success', 'Item added successfully!');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to add item');
+
+    } catch (err: any) {
+      console.error(err);
+      Alert.alert('Error', err.message || 'Something went wrong');
     } finally {
       setUploading(false);
     }
-  }
+  };
+
   async function deleteItem(id: string) {
     Alert.alert('Delete Item', 'Are you sure you want to remove this item?', [
       { text: 'Cancel', style: 'cancel' },
@@ -117,21 +180,30 @@ export default function ManageItems() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          const { error } = await (supabase as any)
+          const { error } = await supabase
             .from('items')
-            .update({ is_deleted: true })
+            .update({ is_active: false })
             .eq('id', id);
-          if (error) Alert.alert('Error', error.message);
-          else fetchItems();
+
+          if (error) {
+            Alert.alert('Error', error.message);
+          } else {
+            fetchItems(); 
+          }
         },
       },
     ]);
   }
+
   const renderItem = ({ item }: { item: Item }) => {
     return (
       <View style={styles.listCard}>
         {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.itemImage} />
+          <Image 
+            source={{ uri: item.image_url }} 
+            style={styles.itemImage}
+            resizeMode="cover" 
+          />
         ) : (
           <View style={[styles.itemImage, { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' }]}>
             <ImageIcon size={20} color="#ccc" />
@@ -148,6 +220,7 @@ export default function ManageItems() {
       </View>
     );
   };
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -159,6 +232,7 @@ export default function ManageItems() {
           Manage Items
         </Text>
       </View>
+
       <View style={styles.formCard}>
         <TextInput 
           placeholder="Item name" 
@@ -179,17 +253,28 @@ export default function ManageItems() {
           keyboardType="numeric" 
           style={styles.input} 
         />
+        
         <TouchableOpacity onPress={pickImage} style={styles.imageBtn}>
-          <ImageIcon size={20} color="#4B5563" />
+          <Crop size={20} color="#4B5563" />
           <Text style={styles.imageBtnText}>
-            {image ? 'Change Image' : 'Pick Image'}
+            {image ? 'Change Image' : 'Pick & Crop Image'}
           </Text>
         </TouchableOpacity>
+
         {image && (
-          <Image source={{ uri: image }} style={styles.previewImage} />
+          <View style={styles.imagePreviewContainer}>
+            <Image 
+              source={{ uri: image.uri }} 
+              style={styles.previewImage} 
+            />
+            <Text style={styles.imageInfoText}>
+              1:1 Ratio • {image.width}x{image.height}px
+            </Text>
+          </View>
         )}
+
         <TouchableOpacity 
-          onPress={addItem} 
+          onPress={handleAddItem} 
           style={[styles.primaryBtn, uploading && { opacity: 0.7 }]}
           disabled={uploading}
         >
@@ -200,6 +285,7 @@ export default function ManageItems() {
           )}
         </TouchableOpacity>
       </View>
+
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -215,6 +301,7 @@ export default function ManageItems() {
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -263,10 +350,20 @@ const styles = StyleSheet.create({
   },
   previewImage: {
     width: '100%',
-    height: 150,
+    height: 200,
     borderRadius: 10,
-    marginBottom: 10,
+    marginBottom: 8,
     resizeMode: 'cover',
+    backgroundColor: '#f3f4f6',
+  },
+  imagePreviewContainer: {
+    marginBottom: 10,
+  },
+  imageInfoText: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   primaryBtn: {
     backgroundColor: '#2563EB',

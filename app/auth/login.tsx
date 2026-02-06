@@ -1,6 +1,7 @@
 import AppLogo from '@/components/AppLogo';
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { SecurityConfig } from '@/config/security';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -18,7 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-const ADMIN_EMAIL = 'ronakkumarbhakta@gmail.com';
+
 export default function LoginScreen() {
   const router = useRouter();
   const { signIn } = useAuth();
@@ -60,14 +61,14 @@ export default function LoginScreen() {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       setTimeout(() => {
-        const targetIsAdmin = email.trim() === ADMIN_EMAIL;
+        const targetIsAdmin = SecurityConfig.adminEmails.includes(email.trim().toLowerCase());
         if (targetIsAdmin) {
           router.replace('/admin');
         } else {
           router.replace('/(tabs)');
         }
       }, 300);
-    } catch (err: any) {
+    } catch {
       setError('An unexpected error occurred');
       setLoading(false);
     }

@@ -36,10 +36,30 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files (SECURE: Never commit real credentials)
 .env
 .env*.local
 .env.local
+.env.development
+.env.production
+.env.real
+
+# Security files (NEVER COMMIT)
+*.key
+*.pem
+*.p12
+*.p8
+secrets/
+credentials/
+supabase-credentials/
+security-logs/
+auth-logs/
+
+# Logs and debugging
+security-logs*
+auth-logs*
+*.log
+monitoring-data*
 
 # IDE
 .idea/
@@ -60,4 +80,102 @@ app-example
 # generated native folders
 /ios
 /android
-//ewafhewa
+
+# Temporary and test files
+*.tmp
+*.temp
+test-*.env
+*.test.env
+
+# Build artifacts
+build/
+dist/
+out/
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Database files (local development)
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.backup
+*.bak
+
+# Security monitoring data
+security_monitoring_data*
+rate_limit_data*
+enhanced_security_log*
+
+# API keys and secrets (additional patterns)
+*api-key*
+*secret*
+*private*
+*confidential*
+
+# React Native specific
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+*.hbc
+
+# Flipper
+flipper-server-state.json
+
+# Bundle artifacts
+*.jsbundle
+
+# Ruby / CocoaPods
+/Pods/
+/vendor/bundle/
+
+# Temporary files created by Metro
+.metro-health-check*
+
+# Testing
+/coverage
+*.lcov
+
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Package manager lock files (keeping yarn.lock since it's already there)
+# package-lock.json is already included above
+
+# Local development
+.local/
+.temp/
+.tmp/
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor directories and files (additional)
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+*.sublime-project
+*.sublime-workspace
+
+# Sentry
+.sentryclirc
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output

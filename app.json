@@ -4,8 +4,9 @@
     "slug": "TechPhono",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/logo.png",
     "scheme": "techphono",
+    "deepLinks": true,
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "updates": {
@@ -13,7 +14,12 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.techphono.repair"
+      "bundleIdentifier": "com.techphono.repair",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to camera to take photos for items",
+        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select images for items",
+        "NSPhotoLibraryAddUsageDescription": "This app needs access to save cropped images to photo library"
+      }
     },
     "android": {
       "package": "com.techphono.repair",
@@ -24,14 +30,18 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
     "paths": {
-      "auth/callback": "auth/callback"
+      "auth/callback": "auth/callback",
+      "reset-password": "reset-password"
     },
     "plugins": [
       "expo-router",

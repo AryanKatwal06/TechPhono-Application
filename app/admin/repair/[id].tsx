@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-const REPAIR_STATUSES = ['received', 'diagnosing', 'repairing', 'repaired', 'completed'] as const;
+const REPAIR_STATUSES = ['Received', 'Diagnosing', 'Repairing', 'Repaired', 'Completed'] as const;
 export default function AdminRepairDetail() {
   const { id } = useLocalSearchParams();
   const repairId = Array.isArray(id) ? id[0] : id;
@@ -54,7 +54,7 @@ export default function AdminRepairDetail() {
       .update({ 
         status: newStatus, 
         updated_at: new Date().toISOString()
-      })
+      } as any)
       .eq('id', repair.id);
     if (!error) {
       router.back();
@@ -71,6 +71,7 @@ export default function AdminRepairDetail() {
       .from('repairs')
       .update({ 
         admin_notes: adminNotes,
+        updated_at: new Date().toISOString()
       } as any)
       .eq('id', repairId);
     setUpdating(false);
@@ -151,12 +152,12 @@ export default function AdminRepairDetail() {
                       }}
                     >
                       <Text style={{ color: '#fff', textAlign: 'center', fontWeight: '600' }}>
-                        Mark as {status.charAt(0).toUpperCase() + status.slice(1)}
+                        Mark as {status}
                       </Text>
                     </TouchableOpacity>
                   ))}
                   <TouchableOpacity
-                      onPress={() => updateStatus('cancelled')}
+                      onPress={() => updateStatus('Cancelled')}
                       disabled={updating}
                       style={{
                         padding: 14,

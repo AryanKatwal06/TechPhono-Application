@@ -10,6 +10,7 @@ import React, {
     useState,
 } from 'react';
 import { Alert, Linking } from 'react-native';
+import { SecurityConfig } from '@/config/security';
 import { supabase } from '@/services/supabaseClient';
 import type { CartItem } from '@/types/cart';
 import type { Repair } from '@/types/database';
@@ -23,7 +24,7 @@ const sendRepairToWhatsApp = (data: {
     issue: string;
     service: string;
 }) => {
-    const adminNumber = '918527361011';
+    const adminNumber = SecurityConfig.whatsappNumber;
     const message = `
 🛠 *New Repair Request*
 🆔 Job ID: ${data.jobId}
