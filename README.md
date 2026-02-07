@@ -115,53 +115,117 @@ Supabase PostgreSQL tables handle:
 ```
 TechPhono-Repair-App
 │
-├── app/                         # Expo Router (App entry point)
-│   │
-│   ├── (tabs)/                  # Bottom tab navigation (User)
-│   │   ├── index.tsx            # Home screen
-│   │   ├── booking.tsx          # Repair booking screen
-│   │   ├── track-repair.tsx     # Live repair tracking
-│   │   ├── repair-history.tsx   # User repair history
-│   │   └── profile.tsx          # User profile & logout
-│   │
-│   ├── admin/                   # Admin-only screens
-│   │   ├── index.tsx            # Admin dashboard
-│   │   ├── manage-services.tsx  # Add/Delete services
-│   │   ├── manage-items.tsx     # Add/Delete shop items
-│   │   ├── history.tsx          # Completed & cancelled repairs
-│   │   └── repair-details.tsx   # Repair detail & timeline
-│   │
-│   ├── auth/                    # Authentication screens
-│   │   ├── login.tsx            # Login screen
-│   │   ├── register.tsx         # Registration screen
-│   │   ├── reset-password.tsx   # Forgot password flow
-│   │   └── index.tsx            # Role-based redirect
-│   │
-│   └── _layout.tsx              # Root layout configuration
+├── .expo/                          # Expo internal files
+├── android/                        # Android native build files
 │
-├── components/                  # Reusable UI components
-│   ├── RepairTimeline.tsx
-│   ├── ServiceCard.tsx
-│   ├── ShopItemCard.tsx
-│   └── LoadingIndicator.tsx
+├── app/                            # Expo Router (App entry point)
+│   │
+│   ├── (tabs)/                     # Bottom tab navigation (User)
+│   │   ├── _layout.tsx             # Tabs layout
+│   │   ├── index.tsx               # Home screen
+│   │   ├── cart.tsx                # Cart screen
+│   │   ├── services.tsx            # Services listing
+│   │   └── shop.tsx                # Shop screen
+│   │
+│   ├── admin/                      # Admin-only screens
+│   │   ├── repair/
+│   │   │   └── [id].tsx             # Repair details (dynamic route)
+│   │   ├── _layout.tsx              # Admin layout
+│   │   ├── index.tsx                # Admin dashboard
+│   │   ├── history.tsx              # Completed & cancelled repairs
+│   │   ├── repairs.tsx              # All repair requests
+│   │   ├── manage-items.tsx         # Manage shop items
+│   │   └── manage-services.tsx      # Manage services
+│   │
+│   ├── auth/                       # Authentication screens
+│   │   ├── callback.tsx            # Auth callback handler
+│   │   ├── login.tsx               # Login screen
+│   │   ├── register.tsx            # Registration screen
+│   │   ├── forgot-password.tsx     # Forgot password
+│   │   └── reset-password.tsx      # Reset password
+│   │
+│   ├── _layout.tsx                 # Root layout
+│   ├── +not-found.tsx              # 404 screen
+│   ├── index.tsx                   # App entry / role-based redirect
+│   ├── booking.tsx                 # Repair booking
+│   ├── feedback.tsx                # User feedback
+│   ├── repair-history.tsx          # User repair history
+│   ├── reset-password.tsx          # Reset password (route)
+│   └── track-repair.tsx            # Live repair tracking
 │
-├── context/                     # Global state management
-│   └── AuthContext.tsx
+├── assets/                         # Static assets
+│   └── images/
+│       └── logo.png
 │
-├── services/                    # External services
-│   └── supabaseClient.ts
+├── components/
+│   └── ui/                         # Reusable UI components
+│       ├── AppLogo.tsx
+│       ├── AnimatedPressable.tsx
+│       ├── RatingStars.tsx
+│       ├── RepairTimeline.tsx
+│       ├── Skeleton.tsx
+│       ├── SkeletonLoader.tsx
+│       ├── WhatsAppFAB.tsx
+│       ├── collapsible.tsx
+│       ├── haptic-tab.tsx
+│       ├── icon-symbol.tsx
+│       ├── icon-symbol.ios.tsx
+│       ├── themed-text.tsx
+│       └── themed-view.tsx
 │
-├── constants/                   # App-wide constants
+├── config/                         # App security & configuration
+│   ├── security.ts
+│   └── securityEnhancements.ts
+│
+├── constants/                      # App-wide constants
+│   ├── products.ts
+│   ├── repairSteps.ts
+│   ├── services.ts
 │   └── theme.ts
 │
-├── utils/                       # Helper functions
-│   └── formatDate.ts
+├── context/                        # Global state management
+│   ├── AuthContext.tsx
+│   └── TechPhonoContext.tsx
 │
-├── .env                         # Environment variables
-├── app.json                     # Expo configuration
-├── package.json                 # Dependencies & scripts
-├── tsconfig.json                # TypeScript configuration
-└── README.md                    # Project documentation
+├── hooks/                          # Custom React hooks
+│   ├── use-color-scheme.ts
+│   ├── use-color-scheme.web.ts
+│   ├── use-theme-color.ts
+│   └── useSecureStorage.ts
+│
+├── middleware/                     # App middleware
+│   ├── apiSecurity.ts
+│   └── securityMonitor.ts
+│
+├── scripts/                        # Utility scripts
+│   └── reset-project.js
+│
+├── services/                       # External services
+│   ├── supabaseClient.ts
+│   └── whatsapp.ts
+│
+├── types/                          # TypeScript types
+│   ├── cart.ts
+│   └── database.ts
+│
+├── utils/                          # Helper utilities
+│   ├── errorHandler.ts
+│   ├── sessionManager.ts
+│   ├── statusUtils.ts
+│   └── validation.ts
+│
+├── .env                            # Environment variables
+├── .env.local                      # Local environment variables
+├── .gitignore
+├── app.json                        # Expo configuration
+├── eas.json                        # EAS build config
+├── eslint.config.js
+├── expo-env.d.ts
+├── metro.config.js
+├── package.json
+├── package-lock.json
+├── tsconfig.json
+└── README.md
 ```
 
 ## 🔐 Authentication Flow
