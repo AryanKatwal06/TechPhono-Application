@@ -39,6 +39,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     let mounted = true;
+    let authListener: any = null;
+    
     const fetchSession = async () => {
       try {
         const { data } = await supabase.auth.getSession();
@@ -55,7 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     fetchSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
+    authListener = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (!mounted) return;
         setSession(session);

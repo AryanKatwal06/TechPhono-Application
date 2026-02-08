@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { createStatusFilter, getAllStatuses, getActiveStatuses, normalizeStatus } from '@/utils/statusUtils';
+import { normalizeStatus } from '@/utils/statusUtils';
 
 export default function AdminHome() {
   const router = useRouter();
@@ -26,21 +26,40 @@ export default function AdminHome() {
 
   const fetchStats = async () => {
     try {
-      if (!supabase) return;
+      if (!supabase) {
+        console.error('❌ Supabase client not initialized');
+        throw new Error('Supabase client not available');
+      }
       console.log('🔍 Fetching admin stats...');
       
+      // Test basic connection first
+      console.log('🔗 Testing Supabase connection...');
+      const { error: testError } = await supabase
+        .from('repairs')
+        .select('id')
+        .limit(1);
+      
+      if (testError) {
+        console.error('❌ Supabase connection test failed:', testError);
+        throw testError;
+      }
+      console.log('✅ Supabase connection successful');
+      
       // DEBUG: Check all repairs first
-      const { data: allRepairs } = await supabase
+      const { data: allRepairs, error: allError } = await supabase
         .from('repairs')
         .select('id, status, is_deleted');
-      console.log('ADMIN REPAIRS:', allRepairs);
       
-      // Total Repairs (exclude cancelled and deleted) - case-insensitive
-      const cancelledStatuses = createStatusFilter(['cancelled' as any]);
+      if (allError) {
+        console.error('❌ Error fetching all repairs:', allError);
+        throw allError;
+      }
+      console.log('📊 ADMIN REPAIRS DATA:', allRepairs);
+      
+      // Total Repairs (exclude cancelled and deleted) - using simpler approach
       const { count: total, error: totalError } = await supabase
         .from('repairs')
         .select('*', { count: 'exact', head: true })
-        .not('status', 'in', cancelledStatuses)
         .eq('is_deleted', false);
       
       if (totalError) {
@@ -48,8 +67,10 @@ export default function AdminHome() {
         throw totalError;
       }
       
-      // Active Repairs (received, diagnosing, repairing, repaired) - case-insensitive
-      const activeStatuses = createStatusFilter(getActiveStatuses());
+      // Active Repairs (received, diagnosing, repairing, repaired) - using direct status values
+      const activeStatuses = ['received', 'diagnosing', 'repairing', 'repaired'];
+      console.log('⚡ Active statuses filter:', activeStatuses);
+      
       const { count: active, error: activeError } = await supabase
         .from('repairs')
         .select('*', { count: 'exact', head: true })
@@ -82,9 +103,19 @@ export default function AdminHome() {
           console.warn('⚠️ Data issues found:', issues.join(', '));
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error fetching admin stats:', error);
-      Alert.alert('Error', 'Failed to fetch repair statistics');
+      
+      let errorMessage = 'Failed to fetch repair statistics';
+      if (error?.message) {
+        errorMessage = `Database error: ${error.message}`;
+      } else if (error?.error_description) {
+        errorMessage = `Authentication error: ${error.error_description}`;
+      } else if (typeof error === 'string') {
+        errorMessage = `Error: ${error}`;
+      }
+      
+      Alert.alert('Error', errorMessage);
     }
   };
 

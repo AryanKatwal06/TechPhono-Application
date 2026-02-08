@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "scheme": "techphono",
-    "deepLinks": true,
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "updates": {
@@ -23,44 +22,37 @@
     },
     "android": {
       "package": "com.techphono.repair",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundColor": "#E6F4FE"
-      },
+      "icon": "./assets/logo.png",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.VIBRATE",
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
-      ]
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA_WHEN_IN_USE"
+      ],
+      "config": {
+        "univeral": {
+          "disableHardwareAcceleration": false
+        }
+      }
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
-    "paths": {
-      "auth/callback": "auth/callback",
-      "reset-password": "reset-password"
-    },
     "plugins": [
       "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
-        }
-      ]
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8b3465d8-f032-4d6a-a9f0-ac14e3af6a4a"
+      }
     }
   }
 }
