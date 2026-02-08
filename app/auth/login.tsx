@@ -6,13 +6,13 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   BackHandler,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -28,14 +28,49 @@ export default function LoginScreen() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Animation refs
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+
   useEffect(() => {
     const backAction = () => {
       router.replace('/auth/login'); 
       return true;
     };
     const handler = BackHandler.addEventListener('hardwareBackPress', backAction);
-    return () => handler.remove();
-  }, [router]);
+
+    // Start entrance animations
+    const entranceAnimation = Animated.sequence([
+      Animated.delay(100),
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        })
+      ])
+    ]);
+
+    entranceAnimation.start();
+
+    return () => {
+      handler.remove();
+      entranceAnimation.stop();
+    };
+  }, [router, fadeAnim, slideAnim, scaleAnim]);
+
   const handleLogin = async () => {
     if (!email || !password) {
       setError('Please fill in all required fields');
@@ -73,24 +108,38 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.replace('/auth/login')}
-          activeOpacity={0.7}
+      <Animated.ScrollView 
+        contentContainerStyle={styles.content} 
+        keyboardShouldPersistTaps="handled"
+        style={{
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        }}
+      >
+        <Animated.View
+          style={{
+            transform: [{ scale: scaleAnim }],
+          }}
         >
-          <ArrowLeft size={24} color={colors.text} />
-        </TouchableOpacity>
-        <View style={styles.header}>
-          <AppLogo size={140} />
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to continue</Text>
-        </View>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.replace('/auth/login')}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={24} color={colors.text} />
+          </TouchableOpacity>
+          <View style={styles.header}>
+            <AppLogo size={140} />
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>Sign in to continue</Text>
+          </View>
+        </Animated.View>
         <View style={styles.form}>
           <Text style={styles.label}>Email</Text>
           <TextInput
@@ -151,10 +200,11 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </KeyboardAvoidingView>
   );
 }
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: {

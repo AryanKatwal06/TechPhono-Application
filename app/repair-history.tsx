@@ -31,13 +31,15 @@ export default function ProfileScreen() {
       }
       setLoadingHistory(true);
       try {
+        console.log('🔍 Fetching repair history for phone:', userPhone);
         const { data, error } = await supabase!
           .from('repairs')
           .select('*')
           .eq('phone', userPhone)
-          .in('status', ['Completed', 'Cancelled'])
+          .in('status', ['completed', 'cancelled'])
           .order('created_at', { ascending: false });
         if (error) throw error;
+        console.log('📊 Found repairs:', data?.length || 0, data);
         setRepairs(data || []);
       } catch (error) {
         console.error('Fetch error:', error);
