@@ -11,10 +11,25 @@ import React, {
 } from 'react';
 import { Alert, Linking } from 'react-native';
 import { SecurityConfig } from '@/config/security';
-import { supabase } from '@/services/supabaseClient';
+import { db } from '@/services/firebaseClient';
+import {
+    collection,
+    addDoc,
+    getDocs,
+    getDoc,
+    updateDoc,
+    query,
+    where,
+    orderBy,
+    doc,
+    serverTimestamp,
+    Timestamp,
+} from 'firebase/firestore';
 import type { CartItem } from '@/types/cart';
 import type { Repair } from '@/types/database';
+
 const CART_STORAGE_KEY = '@techphono_cart';
+
 const sendRepairToWhatsApp = (data: {
     jobId: string;
     name: string;
@@ -40,6 +55,7 @@ const sendRepairToWhatsApp = (data: {
         Alert.alert('Error', 'WhatsApp not installed')
     );
 };
+
 interface TechPhonoContextType {
     ready: boolean;
     cart: CartItem[];
@@ -74,7 +90,9 @@ interface TechPhonoContextType {
         feedback: string
     ) => Promise<{ success: boolean; error?: string }>;
 }
+
 export const TechPhonoContext = createContext<TechPhonoContextType | null>(null);
+
 export const useTechPhono = () => {
     const ctx = useContext(TechPhonoContext);
     if (!ctx) {
@@ -82,9 +100,35 @@ export const useTechPhono = () => {
     }
     return ctx;
 };
+
+// Helper to convert Firestore doc to Repair type
+const docToRepair = (docSnap: any): Repair => {
+    const data = docSnap.data();
+    return {
+        id: docSnap.id,
+        job_id: data.job_id,
+        name: data.name,
+        phone: data.phone,
+        device_type: data.device_type,
+        model: data.model || null,
+        issue: data.issue,
+        service: data.service,
+        status: data.status,
+        created_at: data.created_at instanceof Timestamp
+            ? data.created_at.toDate().toISOString()
+            : data.created_at || new Date().toISOString(),
+        admin_notes: data.admin_notes || null,
+        rating: data.rating || null,
+        feedback: data.feedback || null,
+        is_deleted: data.is_deleted || false,
+        deleted_at: data.deleted_at || null,
+    };
+};
+
 export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [ready, setReady] = useState(false);
+
     const loadCart = useCallback(async () => {
         try {
             const stored = await AsyncStorage.getItem(CART_STORAGE_KEY);
@@ -97,9 +141,11 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
             setReady(true);
         }
     }, []);
+
     useEffect(() => {
         loadCart();
     }, [loadCart]);
+
     const persistCart = async (nextCart: CartItem[]) => {
         setCart(nextCart);
         try {
@@ -111,6 +157,7 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
             console.error('❌ Cart save failed:', err);
         }
     };
+
     const addToCart = (item: CartItem) => {
         const index = cart.findIndex(
             c => c.product.id === item.product.id
@@ -123,9 +170,11 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
             persistCart([...cart, item]);
         }
     };
+
     const removeFromCart = (productId: string) => {
         persistCart(cart.filter(i => i.product.id !== productId));
     };
+
     const updateCartQuantity = (productId: string, quantity: number) => {
         if (quantity <= 0) {
             removeFromCart(productId);
@@ -139,16 +188,21 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
             )
         );
     };
+
     const clearCart = () => persistCart([]);
+
     const getCartTotal = () =>
         cart.reduce(
             (sum, item) => sum + item.product.price * item.quantity,
             0
         );
+
     const getCartCount = () =>
         cart.reduce((count, item) => count + item.quantity, 0);
+
     const generateJobId = () =>
         Crypto.randomUUID().split('-')[0].toUpperCase();
+
     const createRepair = async (data: {
         name: string;
         phone: string;
@@ -158,9 +212,6 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
         service: string;
     }) => {
         try {
-            if (!supabase) {
-                return { success: false, error: 'Service unavailable' };
-            }
             if (
                 !data.name ||
                 !data.phone ||
@@ -171,7 +222,8 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
                 return { success: false, error: 'All fields are required' };
             }
             const jobId = generateJobId();
-            const { error } = await supabase.from('repairs').insert({
+
+            await addDoc(collection(db, 'repairs'), {
                 job_id: jobId,
                 name: data.name.trim(),
                 phone: data.phone.trim(),
@@ -180,11 +232,14 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
                 issue: data.issue.trim(),
                 service: data.service.trim(),
                 status: 'Pending',
-                admin_notes: '', 
+                admin_notes: '',
                 rating: 0,
                 feedback: '',
-            } as any);
-            if (error) return { success: false, error: error.message };
+                is_deleted: false,
+                deleted_at: null,
+                created_at: serverTimestamp(),
+            });
+
             sendRepairToWhatsApp({
                 jobId,
                 name: data.name,
@@ -195,11 +250,12 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
                 service: data.service,
             });
             return { success: true, jobId };
-        } catch (err) {
+        } catch (err: any) {
             console.error('❌ Create repair failed:', err);
-            return { success: false, error: 'Failed to create repair' };
+            return { success: false, error: err.message || 'Failed to create repair' };
         }
     };
+
     const safeFetch = async <T,>(
         fn: () => Promise<T>,
         fallback: T
@@ -210,72 +266,86 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
             return fallback;
         }
     };
+
     const getRepairByJobId = (jobId: string) =>
         safeFetch(async () => {
-            if (!supabase) return null;
-            const { data } = await supabase
-                .from('repairs')
-                .select('*')
-                .eq('job_id', jobId)
-                .single();
-            return data ? (data as Repair) : null;
+            const q = query(
+                collection(db, 'repairs'),
+                where('job_id', '==', jobId)
+            );
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) return null;
+            return docToRepair(snapshot.docs[0]);
         }, null);
+
     const getRepairsByPhone = (phone: string) =>
         safeFetch(async () => {
-            if (!supabase) return [];
-            const { data } = await supabase
-                .from('repairs')
-                .select('*')
-                .eq('phone', phone)
-                .order('created_at', { ascending: false });
-            return (data as Repair[]) || [];
+            const q = query(
+                collection(db, 'repairs'),
+                where('phone', '==', phone),
+                orderBy('created_at', 'desc')
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(docToRepair);
         }, []);
+
     const getAllRepairs = () =>
         safeFetch(async () => {
-            if (!supabase) return [];
-            const { data } = await supabase
-                .from('repairs')
-                .select('*')
-                .order('created_at', { ascending: false });
-            return (data as Repair[]) || [];
+            const q = query(
+                collection(db, 'repairs'),
+                orderBy('created_at', 'desc')
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(docToRepair);
         }, []);
+
     const updateRepairStatus = async (
         id: string,
         status: Repair['status']
     ) => {
-        if (!supabase) return { success: false, error: 'Service unavailable' };
-        const { error } = await (supabase as any)
-            .from('repairs')
-            .update({ status })
-            .eq('id', id);
-        return error
-            ? { success: false, error: 'Failed to update status' }
-            : { success: true };
+        try {
+            await updateDoc(doc(db, 'repairs', id), {
+                status,
+                updated_at: serverTimestamp()
+            });
+            return { success: true };
+        } catch (error: any) {
+            console.error('❌ Update status failed:', error);
+            return { success: false, error: 'Failed to update status' };
+        }
     };
+
     const updateAdminNotes = async (id: string, notes: string) => {
-        if (!supabase) return { success: false, error: 'Service unavailable' };
-        const { error } = await (supabase as any)
-            .from('repairs')
-            .update({ admin_notes: notes })
-            .eq('id', id);
-        return error
-            ? { success: false, error: 'Failed to update notes' }
-            : { success: true };
+        try {
+            await updateDoc(doc(db, 'repairs', id), {
+                admin_notes: notes,
+                updated_at: serverTimestamp()
+            });
+            return { success: true };
+        } catch (error: any) {
+            console.error('❌ Update notes failed:', error);
+            return { success: false, error: 'Failed to update notes' };
+        }
     };
+
     const submitFeedback = async (
         id: string,
         rating: number,
         feedback: string
     ) => {
-        if (!supabase) return { success: false, error: 'Service unavailable' };
-        const { error } = await (supabase as any)
-            .from('repairs')
-            .update({ rating, feedback })
-            .eq('id', id);
-        return error
-            ? { success: false, error: 'Failed to submit feedback' }
-            : { success: true };
+        try {
+            await updateDoc(doc(db, 'repairs', id), {
+                rating,
+                feedback,
+                updated_at: serverTimestamp()
+            });
+            return { success: true };
+        } catch (error: any) {
+            console.error('❌ Submit feedback failed:', error);
+            return { success: false, error: 'Failed to submit feedback' };
+        }
     };
+
     const value = useMemo(
         () => ({
             ready,
@@ -296,6 +366,7 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
         }),
         [cart, ready]
     );
+
     return (
         <TechPhonoContext.Provider value={value}>
             {children}

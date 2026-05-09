@@ -1,5 +1,6 @@
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
-import { supabase } from '@/services/supabaseClient';
+import { db } from '@/services/firebaseClient';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronRight, Wrench } from 'lucide-react-native';
@@ -20,6 +21,24 @@ interface Service {
   description: string;
   price: string | number;
 }
+
+const getCreatedAtMs = (value: unknown) => {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (typeof value === 'object' && value !== null) {
+    const timestamp = value as { toMillis?: () => number; seconds?: number; nanoseconds?: number };
+    if (typeof timestamp.toMillis === 'function') return timestamp.toMillis();
+    if (typeof timestamp.seconds === 'number') {
+      return timestamp.seconds * 1000 + Math.floor((timestamp.nanoseconds || 0) / 1_000_000);
+    }
+  }
+  return 0;
+};
+
 export default function ServicesScreen() {
   const router = useRouter();
   const [services, setServices] = useState<Service[]>([]);
@@ -30,18 +49,24 @@ export default function ServicesScreen() {
   const fetchServices = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('services')
-        .select('*')
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false });
-      if (error) {
-        console.error('Error fetching services:', error);
-      } else {
-        setServices(data || []);
-      }
+      const q = query(
+        collection(db, 'services'),
+        where('is_deleted', '==', false)
+      );
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs
+        .map((d) => ({
+          id: d.id,
+          createdAtMs: getCreatedAtMs(d.data().created_at),
+          name: d.data().name,
+          description: d.data().description,
+          price: d.data().price,
+        }))
+        .sort((left, right) => right.createdAtMs - left.createdAtMs)
+        .map(({ createdAtMs, ...service }) => service);
+      setServices(data);
     } catch (err) {
-      console.error('Unexpected error:', err);
+      console.error('Error fetching services:', err);
     } finally {
       setLoading(false);
     }
@@ -122,8 +147,8 @@ export default function ServicesScreen() {
                     </Text>
                     <View style={styles.pricePill}>
                       <Text style={styles.priceText}>
-                        {typeof service.price === 'number' 
-                          ? `₹${service.price}` 
+                        {typeof service.price === 'number'
+                          ? `₹${service.price}`
                           : service.price}
                       </Text>
                     </View>
@@ -185,6 +210,13 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     marginBottom: spacing.md,
     ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
   cardLeft: {
     flexDirection: 'row',
@@ -196,9 +228,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: colors.primary + '10',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
   },
   serviceName: {
     fontSize: 16,
@@ -214,10 +248,12 @@ const styles = StyleSheet.create({
   pricePill: {
     marginTop: spacing.sm,
     alignSelf: 'flex-start',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.primary + '20',
     paddingHorizontal: spacing.md,
     paddingVertical: 4,
     borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
   },
   priceText: {
     color: colors.primary,

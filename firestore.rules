@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: check if user is admin via Custom Claims
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    // Helper: check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // REPAIRS collection
+    // Enforces ownership checks plus full admin access
+    match /repairs/{repairId} {
+      // Only verified authenticated users can create a repair, or admins
+      allow create: if isAdmin() || (isAuthenticated() && request.auth.token.email_verified == true);
+
+      // Authenticated and verified users can read repairs (for tracking by job_id)
+      // Admins can read all
+      allow read: if isAdmin() || (isAuthenticated() && request.auth.token.email_verified == true);
+
+      // Only admins can update status, admin_notes, is_deleted
+      // Verified users can update only rating, feedback, and status (to cancel) on their own repairs
+      allow update: if isAdmin() ||
+        (isAuthenticated() && request.auth.token.email_verified == true &&
+         resource.data.user_id == request.auth.uid &&
+         (
+           request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['rating', 'feedback', 'updated_at']) ||
+           (request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'updated_at']) &&
+            request.resource.data.status == 'cancelled')
+         ));
+
+      // Only admins can delete
+      allow delete: if isAdmin();
+    }
+
+    // ITEMS collection
+    match /items/{itemId} {
+      // Anyone can read items (public catalog)
+      allow read: if true;
+
+      // Only admins can create/update/delete items
+      allow create, update, delete: if isAdmin();
+    }
+
+    // SERVICES collection
+    match /services/{serviceId} {
+      // Anyone can read services (public catalog)
+      allow read: if true;
+
+      // Only admins can create/update/delete services
+      allow create, update, delete: if isAdmin();
+    }
+
+    // USER PROFILES
+    match /users/{userId} {
+      // Users can read/write their own profile. Creation allowed for new users even if not verified.
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow read, update, delete: if isAuthenticated() && request.auth.uid == userId || isAdmin();
+
+      // Security tokens subcollection (CSRF, etc.)
+      match /security_tokens/{tokenId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      }
+    }
+  }
+}

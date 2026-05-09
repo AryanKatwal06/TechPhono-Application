@@ -1,7 +1,8 @@
 import { Skeleton } from '@/components/Skeleton';
 import { WhatsAppFAB } from '@/components/WhatsAppFAB';
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
-import { supabase } from '@/services/supabaseClient';
+import { db } from '@/services/firebaseClient';
+import { collection, query, where, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -13,7 +14,6 @@ import {
   Wrench,
   AlertCircle,
   RefreshCw,
-  // ✅ Added new icons here
   ClipboardList,
   ShoppingBag,
 } from 'lucide-react-native';
@@ -28,8 +28,11 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  RefreshControl
+  RefreshControl,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
+
 
 type Service = {
   id: string;
@@ -40,26 +43,36 @@ type Service = {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
   const [jobId, setJobId] = useState('');
-  const [authReady, setAuthReady] = useState(false);
-  
-  // Dynamic Services State
+  const [authReady, setAuthReady] = useState(true);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
 
+  // Determine screen type
+  const isMobile = width < 600;
+  const isTablet = width >= 600 && width < 1024;
+  const isDesktop = width >= 1024;
+  const isLandscape = height < width;
+
   const fetchServices = async () => {
     try {
       setError(false);
-      const { data, error: supabaseError } = await supabase
-        .from('services')
-        .select('*')
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: true });
-
-      if (supabaseError) throw supabaseError;
-      setServices(data || []);
+      const q = query(
+        collection(db, 'services'),
+        where('is_deleted', '==', false),
+        orderBy('created_at', 'asc')
+      );
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(d => ({
+        id: d.id,
+        name: d.data().name,
+        description: d.data().description,
+        price: d.data().price,
+      }));
+      setServices(data);
     } catch (err) {
       console.error(err);
       setError(true);
@@ -75,21 +88,29 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => setAuthReady(true), 1500);
     fetchServices();
 
-    const channel = supabase
-      .channel('services-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, () => fetchServices())
-      .subscribe();
+    const q = query(
+      collection(db, 'services'),
+      where('is_deleted', '==', false),
+      orderBy('created_at', 'asc')
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(d => ({
+        id: d.id,
+        name: d.data().name,
+        description: d.data().description,
+        price: d.data().price,
+      }));
+      setServices(data);
+      setLoading(false);
+    });
 
     return () => {
-      clearTimeout(timer);
-      supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, []);
 
-  // Handler functions (keeping your existing ones)
   const handleCall = () => Linking.openURL('tel:8527361011');
   const handleBookRepair = () => router.push('/booking');
   const handleTrackRepair = () => jobId.trim() && router.push(`/track-repair?jobId=${jobId}`);
@@ -101,132 +122,206 @@ export default function HomeScreen() {
     return (
       <View style={styles.skeletonContainer}>
         <StatusBar style="dark" />
-        <Skeleton height={32} width={150} style={{ marginBottom: 20 }} />
-        <Skeleton height={180} style={{ marginBottom: 24, borderRadius: 28 }} />
-        <View style={{ flexDirection: 'row', gap: 16, marginBottom: 24 }}>
-             <Skeleton height={100} style={{ flex: 1, borderRadius: 18 }} />
-             <Skeleton height={100} style={{ flex: 1, borderRadius: 18 }} />
+        <Skeleton height={32} width={150} style={{ marginBottom: spacing.lg }} />
+        <Skeleton height={48} style={{ marginBottom: spacing.lg, borderRadius: borderRadius.lg }} />
+        <View style={{ flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg }}>
+          <Skeleton height={100} style={{ flex: 1, borderRadius: borderRadius.md }} />
+          <Skeleton height={100} style={{ flex: 1, borderRadius: borderRadius.md }} />
         </View>
-        <Skeleton height={32} width={200} style={{ marginBottom: 16 }} />
-        <Skeleton height={80} style={{ marginBottom: 12 }} />
-        <Skeleton height={80} style={{ marginBottom: 12 }} />
+        <Skeleton height={32} width={200} style={{ marginBottom: spacing.md }} />
+        <Skeleton height={80} style={{ marginBottom: spacing.sm }} />
+        <Skeleton height={80} style={{ marginBottom: spacing.sm }} />
       </View>
     );
   }
 
+  const logoSize = isDesktop ? 48 : isTablet ? 42 : 34;
+  const iconSize = isDesktop ? 24 : 20;
+  const fabSize = isDesktop ? 80 : 60;
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      
-      <LinearGradient colors={[colors.primary, colors.primaryDark]} style={styles.headerGradient}>
+
+      <LinearGradient 
+        colors={['#3B82F6', '#2563EB', '#1E40AF']} 
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[
+          styles.header,
+          {
+            paddingTop: isLandscape ? spacing.xxxl : spacing.xxxl + 20,
+            paddingBottom: spacing.xl,
+            paddingHorizontal: spacing.lg,
+          }
+        ]}
+      >
+        {/* Header Top */}
         <View style={styles.headerTop}>
           <View style={styles.brandContainer}>
-            <Image source={require('@/assets/logo.png')} style={styles.brandLogo} />
+            <Image 
+              source={require('../../assets/logo.png')} 
+              style={{ width: logoSize, height: logoSize }} 
+            />
             <View>
               <Text style={styles.brandText}>TechPhono</Text>
               <Text style={styles.tagline}>Gadgets ka Doctor</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.profileButton} onPress={() => router.push('/repair-history')}>
-            <User size={22} color={colors.card} />
+          <TouchableOpacity
+            style={[
+              styles.profileButton,
+              {
+                width: fabSize * 0.65,
+                height: fabSize * 0.65,
+                borderRadius: (fabSize * 0.65) / 2,
+              },
+            ]}
+            onPress={() => router.push('/repair-history')}
+          >
+            <User size={iconSize} color={colors.card} />
           </TouchableOpacity>
         </View>
 
+        {/* Action Buttons */}
         <View style={styles.headerActions}>
-           <TouchableOpacity onPress={handleBookRepair} style={{ flex: 1 }} activeOpacity={0.9}>
+          <TouchableOpacity onPress={handleBookRepair} style={{ flex: 1 }} activeOpacity={0.9}>
             <View style={styles.primaryButton}>
-                <Wrench size={18} color={colors.primary} />
-                <Text style={styles.primaryButtonText}>Book Repair</Text>
+              <Wrench size={iconSize} color={colors.primary} />
+              <Text style={styles.primaryButtonText}>Book Repair</Text>
             </View>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleCall} style={{ flex: 1 }} activeOpacity={0.9}>
             <View style={[styles.primaryButton, styles.secondaryButton]}>
-                <Phone size={18} color="#fff" />
-                <Text style={[styles.primaryButtonText, { color: '#fff' }]}>Call Now</Text>
+              <Phone size={iconSize} color="#fff" />
+              <Text style={[styles.primaryButtonText, { color: '#fff' }]}>Call Now</Text>
             </View>
           </TouchableOpacity>
         </View>
       </LinearGradient>
 
-      <ScrollView 
-        contentContainerStyle={styles.content} 
+      <ScrollView
+        contentContainerStyle={[
+          styles.content, 
+          {
+            flexGrow: 1,
+            justifyContent: 'center',
+            paddingBottom: isLandscape ? spacing.xl : spacing.xl,
+            minHeight: height - 200 // Ensure minimum height for centering
+          }
+        ]}
         showsVerticalScrollIndicator={false}
+        scrollIndicatorInsets={{ right: 1 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        {/* Track Card */}
-        <View style={styles.trackCard}>
-          <Text style={styles.trackTitle}>Track Your Repair</Text>
+        {/* Track Card - Enhanced */}
+        <View style={[
+          styles.trackCard,
+          {
+            minHeight: isDesktop ? 140 : isTablet ? 120 : 110,
+            marginHorizontal: isDesktop ? spacing.xl : spacing.md,
+          }
+        ]}>
+          <View style={styles.trackHeader}>
+            <View style={styles.trackTitleContainer}>
+              <Text style={styles.trackTitle}>Track Your Repair</Text>
+              <Text style={styles.trackSubtitle}>Enter your Job ID to get real-time updates</Text>
+            </View>
+            <View style={styles.trackIconContainer}>
+              <Search size={24} color={colors.card} />
+            </View>
+          </View>
+          
           <View style={styles.searchContainer}>
-            <Search size={20} color={colors.textLight} />
+            <Search size={iconSize} color={colors.primary} />
             <TextInput
               style={styles.searchInput}
               placeholder="Enter Job ID"
               value={jobId}
               onChangeText={setJobId}
+              placeholderTextColor={colors.textLight}
             />
           </View>
+          
           <TouchableOpacity
             style={[styles.trackButton, !jobId.trim() && styles.trackButtonDisabled]}
             onPress={handleTrackRepair}
             disabled={!jobId.trim()}
+            activeOpacity={0.9}
           >
             <Text style={styles.trackButtonText}>Track Status</Text>
-            <ChevronRight size={20} color={colors.card} />
+            <ChevronRight size={iconSize} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
-        {/* ✅ QUICK ACTIONS UI (Inserted Here) */}
+        {/* Quick Actions - 2x2 Grid */}
         <View style={styles.quickActionsContainer}>
-          <TouchableOpacity
-            style={styles.quickActionCard}
-            onPress={() => router.push('/track-repair')}
-          >
-            <Wrench size={26} color="#2563EB" />
-            <Text style={styles.quickActionText}>Track Repair</Text>
-          </TouchableOpacity>
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity
+              style={[styles.quickActionCard, styles.quickActionCardEnhanced]}
+              onPress={() => router.push('/track-repair')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.quickActionIconContainer}>
+                <Wrench size={28} color={colors.primary} />
+              </View>
+              <Text style={styles.quickActionText}>Track Repair</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.quickActionCard}
-            onPress={() => router.push('/booking')}
-          >
-            <ClipboardList size={26} color="#2563EB" />
-            <Text style={styles.quickActionText}>Book Repair</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.quickActionCard, styles.quickActionCardEnhanced]}
+              onPress={handleBookRepair}
+              activeOpacity={0.8}
+            >
+              <View style={styles.quickActionIconContainer}>
+                <ClipboardList size={28} color={colors.primary} />
+              </View>
+              <Text style={styles.quickActionText}>Book Repair</Text>
+            </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            style={styles.quickActionCard}
-            onPress={() => router.push('/shop')}
-          >
-            <ShoppingBag size={26} color="#2563EB" />
-            <Text style={styles.quickActionText}>Shop</Text>
-          </TouchableOpacity>
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity
+              style={[styles.quickActionCard, styles.quickActionCardEnhanced]}
+              onPress={() => router.push('/(tabs)/shop')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.quickActionIconContainer}>
+                <ShoppingBag size={28} color={colors.primary} />
+              </View>
+              <Text style={styles.quickActionText}>Shop</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.quickActionCard}
-            onPress={() => Linking.openURL('tel:+919999999999')}
-          >
-            <Phone size={26} color="#2563EB" />
-            <Text style={styles.quickActionText}>Call Now</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.quickActionCard, styles.quickActionCardEnhanced]}
+              onPress={handleCall}
+              activeOpacity={0.8}
+            >
+              <View style={styles.quickActionIconContainer}>
+                <Phone size={28} color="#2563EB" />
+              </View>
+              <Text style={styles.quickActionText}>Call Now</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Popular Services Section with Add-ons */}
+        {/* Popular Services Section */}
         <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Popular Services</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/services')}>
-                <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
+          <Text style={styles.sectionTitle}>Popular Services</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/services')}>
+            <Text style={styles.seeAll}>See All</Text>
+          </TouchableOpacity>
         </View>
 
         {loading ? (
-          <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 20 }} />
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: spacing.lg }} />
         ) : error ? (
           <View style={styles.errorContainer}>
-            <AlertCircle size={24} color={colors.danger} />
+            <AlertCircle size={32} color={colors.danger} />
             <Text style={styles.errorText}>Failed to load services</Text>
             <TouchableOpacity onPress={fetchServices} style={styles.retryBtn}>
-                <RefreshCw size={14} color={colors.primary} />
-                <Text style={styles.retryText}>Retry</Text>
+              <RefreshCw size={16} color={colors.primary} />
+              <Text style={styles.retryText}>Retry</Text>
             </TouchableOpacity>
           </View>
         ) : services.length === 0 ? (
@@ -237,24 +332,24 @@ export default function HomeScreen() {
               <View style={styles.serviceCard}>
                 <View style={{ flex: 1 }}>
                   <View style={styles.serviceHeaderRow}>
-                    <Text style={styles.serviceTitle}>{service.name}</Text>
+                    <Text style={styles.serviceTitle} numberOfLines={2}>
+                      {service.name}
+                    </Text>
                     {service.price > 0 && (
-                        <View style={styles.priceBadge}>
-                            <Text style={styles.priceText}>₹{service.price}</Text>
-                        </View>
+                      <View style={styles.priceBadge}>
+                        <Text style={styles.priceText}>₹{service.price}</Text>
+                      </View>
                     )}
                   </View>
                   <Text style={styles.serviceSub} numberOfLines={2}>
-                      {service.description}
+                    {service.description}
                   </Text>
                 </View>
-                <ChevronRight color="#9CA3AF" size={20} />
+                <ChevronRight color="#9CA3AF" size={iconSize} />
               </View>
             </TouchableOpacity>
           ))
         )}
-
-        <View style={{ height: 100 }} />
       </ScrollView>
       <WhatsAppFAB />
     </View>
@@ -262,68 +357,300 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  skeletonContainer: { flex: 1, backgroundColor: colors.background, padding: 20, paddingTop: 60 },
-  headerGradient: { paddingTop: 56, paddingBottom: 28, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
-  brandContainer: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  brandLogo: { width: 34, height: 34 },
-  brandText: { fontSize: 28, fontWeight: '700', color: '#FFFFFF' },
-  tagline: { fontSize: 12, color: colors.card, opacity: 0.8 },
-  profileButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  headerActions: { flexDirection: 'row', gap: 12 },
-  primaryButton: { backgroundColor: '#fff', paddingVertical: 14, borderRadius: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, elevation: 4 },
-  secondaryButton: { backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', elevation: 0 },
-  primaryButtonText: { color: colors.primary, fontWeight: '700', fontSize: 15 },
-  content: { padding: spacing.lg, paddingTop: 24 },
-  trackCard: { backgroundColor: colors.card, borderRadius: borderRadius.lg, padding: spacing.lg, marginBottom: spacing.xl, ...shadows.md },
-  trackTitle: { fontSize: 20, fontWeight: '700', marginBottom: spacing.sm },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.background, borderRadius: borderRadius.md, paddingHorizontal: spacing.md, marginBottom: spacing.md },
-  searchInput: { flex: 1, paddingVertical: spacing.md },
-  trackButton: { backgroundColor: colors.primary, padding: spacing.md, borderRadius: borderRadius.md, flexDirection: 'row', justifyContent: 'center', gap: spacing.sm },
-  trackButtonDisabled: { opacity: 0.5 },
-  trackButtonText: { color: colors.card, fontWeight: '600' },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-  sectionTitle: { fontSize: 20, fontWeight: '700' },
-  seeAll: { color: colors.primary, fontWeight: '600' },
-  serviceCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F3F4F6', ...shadows.sm },
-  serviceHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  serviceTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  priceBadge: { backgroundColor: '#E0F2FE', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  priceText: { color: '#0369A1', fontSize: 12, fontWeight: '700' },
-  serviceSub: { fontSize: 13, color: '#6B7280', lineHeight: 18 },
-  errorContainer: { alignItems: 'center', padding: 20 },
-  errorText: { color: '#6B7280', marginTop: 8 },
-  retryBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 },
-  retryText: { color: colors.primary, fontWeight: '600' },
-  emptyText: { textAlign: 'center', color: '#9CA3AF', marginVertical: 20 },
-  
-  // ✅ NEW STYLES ADDED HERE
-  quickActionsContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  skeletonContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+    paddingTop: spacing.xl,
+  },
+  header: {
+    backgroundColor: colors.primary,
+    borderBottomLeftRadius: borderRadius.xxl,
+    borderBottomRightRadius: borderRadius.xxl,
+  },
+  headerTop: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginHorizontal: 0, // Adjusted to align with other content which has padding in parent
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  brandContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  brandText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  tagline: {
+    fontSize: 12,
+    color: colors.card,
+    opacity: 0.8,
+  },
+  profileButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  primaryButton: {
+    backgroundColor: '#fff',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.sm,
+    elevation: 4,
+    minHeight: 48,
+  },
+  secondaryButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    elevation: 0,
+  },
+  primaryButtonText: {
+    color: colors.primary,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  content: {
+    padding: spacing.lg,
+    paddingTop: spacing.lg,
+    flexGrow: 1,
+  },
+  trackCard: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    marginBottom: spacing.xl,
+    ...shadows.lg,
+    borderWidth: 0,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  trackHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.lg,
+  },
+  trackTitleContainer: {
+    flex: 1,
+  },
+  trackTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: spacing.xs,
+    color: colors.card,
+    letterSpacing: -0.5,
+  },
+  trackSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.card,
+    opacity: 0.9,
+    lineHeight: 20,
+  },
+  trackIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.98)',
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    height: 56,
+    ...shadows.md,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.text,
+  },
+  trackButton: {
+    backgroundColor: colors.card,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 56,
+    ...shadows.md,
+  },
+  trackButtonDisabled: {
+    opacity: 0.5,
+  },
+  trackButtonText: {
+    color: colors.primary,
+    fontWeight: '800',
+    fontSize: 16,
+    letterSpacing: -0.3,
+  },
+  quickActionsContainer: {
+    marginBottom: spacing.lg,
+    gap: spacing.md,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.md,
   },
   quickActionCard: {
-    width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingVertical: 18,
-    paddingHorizontal: 10,
-    marginBottom: 12,
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  quickActionCardEnhanced: {
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+    backgroundColor: colors.card,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+    transform: [{ scale: 1 }],
+  },
+  quickActionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary + '10',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
   quickActionText: {
-    marginTop: 8,
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    marginTop: spacing.md,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  seeAll: {
+    color: colors.primary,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  serviceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.lg,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.primary + '08',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  serviceHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  serviceTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
+    flex: 1,
+  },
+  priceBadge: {
+    backgroundColor: colors.primary + '20',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  priceText: {
+    color: colors.primary,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  serviceSub: {
+    fontSize: 12,
+    color: colors.textLight,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  errorText: {
+    fontSize: 14,
+    color: colors.danger,
+    marginVertical: spacing.md,
+    fontWeight: '500',
+  },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.primary + '20',
+    borderRadius: borderRadius.md,
+  },
+  retryText: {
+    color: colors.primary,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: colors.textLight,
+    textAlign: 'center',
+    marginVertical: spacing.lg,
   },
 });

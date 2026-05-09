@@ -1,24 +1,37 @@
-import { Session, User } from '@supabase/supabase-js';
+import {
+  User,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  updatePassword as firebaseUpdatePassword,
+  updateProfile,
+  deleteUser as firebaseDeleteUser,
+  PhoneAuthProvider,
+  signInWithCredential,
+} from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import * as Linking from 'expo-linking';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import { supabase } from '../services/supabaseClient';
+import { auth, db } from '../services/firebaseClient';
 import { SecurityConfig } from '../config/security';
 import { ValidationUtils, RateLimitUtils } from '../utils/validation';
 import { SessionManager } from '../utils/sessionManager';
 
 type AuthContextType = {
   user: User | null;
-  session: Session | null;
+  session: any | null;
   loading: boolean;
   isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (
-    email: string, 
+    email: string,
     password: string,
     phone?: string,
     name?: string
-  ) => Promise<{ success: boolean; error?: string }>; 
+  ) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<string | null>;
   updatePassword: (password: string) => Promise<string | null>;
@@ -29,8 +42,10 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
+// Store phone verification ID for OTP flow
+let phoneVerificationId: string | null = null;
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,41 +54,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     let mounted = true;
-    let authListener: any = null;
-    
-    const fetchSession = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        if (mounted) {
-          setSession(data.session);
-          setUser(data.session?.user ?? null);
-        }
-      } catch (err) {
-        console.error('❌ Error fetching initial session:', err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
 
-    fetchSession();
-
-    authListener = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (!mounted) return;
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (!mounted) return;
+      setUser(firebaseUser);
+      setLoading(false);
+    });
 
     return () => {
       mounted = false;
-      authListener?.subscription?.unsubscribe();
+      unsubscribe();
     };
   }, []);
 
   const signUp = async (
-    email: string, 
+    email: string,
     password: string,
     phone?: string,
     name?: string
@@ -96,33 +91,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const cleanName = name ? ValidationUtils.sanitizeInput(name) : undefined;
       const cleanPhone = phone ? phone.replace(/\D/g, '') : undefined;
 
-      const { data, error } = await supabase.auth.signUp({ 
-        email: cleanEmail, 
-        password,
-        options: {
-          data: {
-            name: cleanName,
-            phone: cleanPhone,
-          },
-        },
-      });
-      
-      if (error) {
-        console.error('❌ Signup error:', error.message);
-        return { success: false, error: error.message };
-      }
-      
-      if (!data.user) {
+      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+
+      if (!userCredential.user) {
         return {
           success: false,
-          error: 'Signup succeeded but user was not returned. Please check email verification settings.',
+          error: 'Signup succeeded but user was not returned. Please try again.',
         };
       }
-      
+
+      // Update profile display name
+      if (cleanName) {
+        await updateProfile(userCredential.user, {
+          displayName: cleanName,
+        });
+      }
+
+      // Store additional user data in Firestore
+      // Note: isVerified is set to true immediately - no email verification required
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        email: cleanEmail,
+        name: cleanName || null,
+        phone: cleanPhone || null,
+        avatar_url: null,
+        isVerified: true,
+        verifiedAt: serverTimestamp(),
+        authProvider: 'password',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
       return { success: true };
     } catch (err: any) {
-      console.error('❌ Unexpected signup error:', err);
-      return { success: false, error: err.message || 'Unexpected error' };
+        console.error('❌ Unexpected signup error:', err?.code, err?.message || err);
+        // Map Firebase error codes (or messages containing the code) to user-friendly messages
+        const errorMessage = mapFirebaseAuthError(err?.code || err?.message) || err?.message || 'Unexpected error';
+        return { success: false, error: errorMessage };
     }
   };
 
@@ -161,32 +165,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         identifier: cleanEmail
       });
 
-      // First check if user exists
-      const userExists = await checkUserExists(cleanEmail);
-      if (!userExists) {
-        await SessionManager.logSecurityEvent({
-          type: 'login_failure',
-          identifier: cleanEmail,
-          details: { reason: 'user_not_found' }
-        });
-        return 'No account found with this email address. Please create an account first.';
-      }
+      const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
 
-      const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-      if (error) {
+      if (!userCredential.user) {
         await SessionManager.logSecurityEvent({
           type: 'login_failure',
           identifier: cleanEmail,
-          details: { reason: 'invalid_credentials', error: error.message }
+          details: { reason: 'user_not_returned' }
         });
-        
-        // Check if we need to lock out the user
-        if (RateLimitUtils.isRateLimited(cleanEmail, SecurityConfig.maxLoginAttempts, SecurityConfig.lockoutDurationMinutes * 60 * 1000)) {
-          await SessionManager.setLockout(cleanEmail);
-        }
-        
-        console.error('🔴 Login error:', error.message);
-        return error.message;
+        return 'Login failed. Please try again.';
       }
 
       // Successful login
@@ -200,101 +187,109 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await SessionManager.clearLockout(cleanEmail);
 
       // Create session
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await SessionManager.createSession(user.id);
-      }
+      await SessionManager.createSession(userCredential.user.uid);
 
       return null;
     } catch (err: any) {
+      const cleanEmail = email.trim().toLowerCase();
+
       await SessionManager.logSecurityEvent({
         type: 'login_failure',
-        identifier: email.trim().toLowerCase(),
-        details: { reason: 'unexpected_error', error: err.message }
+        identifier: cleanEmail,
+        details: { reason: 'firebase_error', error: err.code || err.message }
       });
+
+      // Check if we need to lock out the user
+      if (RateLimitUtils.isRateLimited(cleanEmail, SecurityConfig.maxLoginAttempts, SecurityConfig.lockoutDurationMinutes * 60 * 1000)) {
+        await SessionManager.setLockout(cleanEmail);
+      }
+
+      // Map Firebase error codes to user-friendly messages
+      const errorMessage = mapFirebaseAuthError(err.code);
+      if (errorMessage) return errorMessage;
+
+      console.error('🔴 Login error:', err.message);
       return err.message || 'An unexpected error occurred during sign in.';
     }
   };
 
   const signUpWithPhone = async (phone: string) => {
-    const { error } = await supabase.auth.signInWithOtp({ phone });
-    if (error) throw error;
+    // Firebase phone auth requires a different flow on React Native
+    // This is a simplified implementation - for production, consider @react-native-firebase/auth
+    throw new Error('Phone authentication requires native Firebase setup. Please use email authentication.');
   };
 
   const verifyOtp = async (phone: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({
-      phone,
-      token,
-      type: 'sms',
-    });
-    if (error) throw error;
+    if (!phoneVerificationId) {
+      throw new Error('No pending phone verification. Please request OTP first.');
+    }
+
+    try {
+      const credential = PhoneAuthProvider.credential(phoneVerificationId, token);
+      await signInWithCredential(auth, credential);
+      phoneVerificationId = null;
+    } catch (err: any) {
+      throw new Error(mapFirebaseAuthError(err.code) || err.message || 'OTP verification failed');
+    }
   };
 
-  const signOut = async () => {
+  const handleSignOut = async () => {
     try {
       await SessionManager.clearSession();
-      await supabase.auth.signOut();
+      await firebaseSignOut(auth);
     } catch (error) {
       console.error('❌ Error during sign out:', error);
     }
   };
 
-  // Simplified user existence check - proceed with login attempt
-  const checkUserExists = async (email: string): Promise<boolean> => {
-    // Always return true to allow login attempt to proceed
-    // The actual validation will happen during signInWithPassword
-    return true;
-  };
-
-  // ✅ FIXED: Simplified and safer version using Expo Linking
   const resetPassword = async (email: string) => {
     try {
-      // First check if user exists
-      const userExists = await checkUserExists(email);
-      if (!userExists) {
-        return 'No account found with this email address. Please create an account first.';
-      }
+      const cleanEmail = email.trim().toLowerCase();
 
-      // This handles the scheme automatically for Expo Go, Web, and Native Builds
-      const redirectTo = Linking.createURL('reset-password');
+      const actionCodeSettings = {
+        url: SecurityConfig.appUrl || 'https://your-app-domain.example/auth/callback',
+        handleCodeInApp: true,
+      } as any;
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo,
-      });
-
-      if (error) {
-        console.error('❌ Reset password error:', error.message);
-        return error.message;
-      }
+      await sendPasswordResetEmail(auth, cleanEmail, actionCodeSettings);
 
       return null;
     } catch (err: any) {
-      console.error('❌ Reset password crash:', err);
-      return 'Unexpected error';
+      console.error('❌ Reset password error:', err);
+      const errorMessage = mapFirebaseAuthError(err.code);
+      if (errorMessage) return errorMessage;
+      return err.message || 'Unexpected error';
     }
   };
 
-  const updatePassword = async (password: string) => {
+  const handleUpdatePassword = async (password: string) => {
     try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+      if (!auth.currentUser) {
+        return 'No user logged in';
+      }
+      await firebaseUpdatePassword(auth.currentUser, password);
       return null;
     } catch (err: any) {
       console.error('❌ Update password error:', err);
+      const errorMessage = mapFirebaseAuthError(err.code);
+      if (errorMessage) return errorMessage;
       return err.message || 'Failed to update password';
     }
   };
 
   const deleteAccount = async () => {
     try {
-      if (!user) throw new Error('No user logged in');
-      
-      const { error } = await supabase.auth.admin.deleteUser(user.id);
-      if (error) throw error;
-      
-      await signOut();
+      if (!auth.currentUser) throw new Error('No user logged in');
+
+      // Firebase allows client-side deletion if user recently authenticated
+      await firebaseDeleteUser(auth.currentUser);
+      await SessionManager.clearSession();
     } catch (err: any) {
       console.error('❌ Delete account error:', err);
+      // If requires-recent-login, inform the user
+      if (err.code === 'auth/requires-recent-login') {
+        throw new Error('Please sign in again before deleting your account for security verification.');
+      }
       throw err;
     }
   };
@@ -303,14 +298,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     <AuthContext.Provider
       value={{
         user,
-        session, 
-        loading, 
+        session: user ? { user } : null,
+        loading,
         isAdmin,
-        signIn, 
-        signUp, 
-        signOut, 
-        resetPassword, 
-        updatePassword,
+        signIn,
+        signUp,
+        signOut: handleSignOut,
+        resetPassword,
+        updatePassword: handleUpdatePassword,
         signUpWithPhone,
         verifyOtp,
         deleteAccount
@@ -320,5 +315,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+
+// Map Firebase Auth error codes to user-friendly messages
+function mapFirebaseAuthError(code?: string | null): string | null {
+  if (!code) return null;
+
+  // Normalize: if a full Firebase message is passed, extract the auth/... code
+  let normalized = String(code);
+  const match = normalized.match(/auth\/[a-z-]+/i);
+  if (match) normalized = match[0];
+
+  switch (normalized) {
+    case 'auth/email-already-in-use':
+      return 'An account with this email already exists.';
+    case 'auth/invalid-email':
+      return 'Please enter a valid email address.';
+    case 'auth/user-disabled':
+      return 'This account has been disabled. Contact support.';
+    case 'auth/user-not-found':
+      return 'No account found with this email address. Please create an account first.';
+    case 'auth/wrong-password':
+      return 'Invalid login credentials.';
+    case 'auth/invalid-credential':
+      return 'Invalid login credentials.';
+    case 'auth/too-many-requests':
+      return 'Too many failed attempts. Please try again later.';
+    case 'auth/weak-password':
+      return 'Password is too weak. Please choose a stronger password.';
+    case 'auth/network-request-failed':
+      return 'Network error. Please check your connection.';
+    case 'auth/requires-recent-login':
+      return 'Please sign in again to perform this action.';
+    case 'auth/invalid-verification-code':
+      return 'Invalid OTP code. Please try again.';
+    case 'auth/invalid-verification-id':
+      return 'OTP session expired. Please request a new code.';
+    default:
+      return null;
+  }
+}
 
 export const useAuth = () => useContext(AuthContext);

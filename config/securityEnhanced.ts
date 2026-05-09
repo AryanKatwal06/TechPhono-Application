@@ -38,7 +38,7 @@ export class SecurityEnhanced {
   }
 
   private static async simpleXOREncrypt(data: string, key: string): Promise<string> {
-    return data.split('').map((char, index) => 
+    return data.split('').map((char, index) =>
       String.fromCharCode(char.charCodeAt(0) ^ key.charCodeAt(index % key.length))
     ).join('');
   }
@@ -66,27 +66,27 @@ export class SecurityEnhanced {
     try {
       const rateData = await AsyncStorage.getItem(this.RATE_LIMIT_KEY);
       const limits = rateData ? JSON.parse(rateData) : {};
-      
+
       const now = Date.now();
       const windowStart = now - windowMs;
-      
+
       if (!limits[identifier]) {
         limits[identifier] = [];
       }
-      
+
       // Clean old requests
       limits[identifier] = limits[identifier].filter((timestamp: number) => timestamp > windowStart);
-      
+
       if (limits[identifier].length >= maxRequests) {
         const oldestRequest = Math.min(...limits[identifier]);
         const remainingTime = oldestRequest + windowMs - now;
         return { allowed: false, remainingTime };
       }
-      
+
       // Add current request
       limits[identifier].push(now);
       await AsyncStorage.setItem(this.RATE_LIMIT_KEY, JSON.stringify(limits));
-      
+
       return { allowed: true };
     } catch (error) {
       console.error('❌ Rate limit check failed:', error);
@@ -105,7 +105,7 @@ export class SecurityEnhanced {
     try {
       const logData = await AsyncStorage.getItem(this.SECURITY_LOG_KEY);
       const logs = logData ? JSON.parse(logData) : [];
-      
+
       const logEntry = {
         ...event,
         timestamp: Date.now(),
@@ -113,16 +113,16 @@ export class SecurityEnhanced {
         deviceInfo: await this.getDeviceInfo(),
         checksum: await this.generateChecksum(event)
       };
-      
+
       logs.push(logEntry);
-      
+
       // Keep only last 1000 entries and rotate
       if (logs.length > 1000) {
         logs.splice(0, logs.length - 1000);
       }
-      
+
       await AsyncStorage.setItem(this.SECURITY_LOG_KEY, JSON.stringify(logs));
-      
+
       // Alert on critical events
       if (event.severity === 'critical') {
         await this.triggerSecurityAlert(logEntry);
@@ -167,12 +167,12 @@ export class SecurityEnhanced {
   // Input sanitization with XSS protection
   static sanitizeInput(input: string, maxLength: number = 1000): string {
     if (!input) return '';
-    
+
     // Length check
     if (input.length > maxLength) {
       throw new Error(`Input exceeds maximum length of ${maxLength}`);
     }
-    
+
     return input
       .trim()
       // Remove potentially dangerous characters
@@ -190,10 +190,10 @@ export class SecurityEnhanced {
   // Validate email with enhanced security
   static isValidEmail(email: string): boolean {
     if (!email || email.length > 254) return false;
-    
+
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     const isValid = emailRegex.test(email);
-    
+
     // Additional security checks
     if (isValid) {
       // Prevent consecutive dots
@@ -204,7 +204,7 @@ export class SecurityEnhanced {
       const domain = email.split('@')[1];
       if (domain && (domain.startsWith('.') || domain.endsWith('.'))) return false;
     }
-    
+
     return isValid;
   }
 
@@ -215,7 +215,7 @@ export class SecurityEnhanced {
     strength: 'weak' | 'medium' | 'strong' | 'very-strong';
   } {
     const errors: string[] = [];
-    
+
     // Length requirements
     if (password.length < 6) {
       errors.push('Password must be at least 6 characters long');
@@ -223,7 +223,7 @@ export class SecurityEnhanced {
     if (password.length > 128) {
       errors.push('Password is too long (maximum 128 characters)');
     }
-    
+
     // Character requirements
     if (!/[A-Z]/.test(password)) {
       errors.push('Password must contain at least one uppercase letter');
@@ -234,7 +234,7 @@ export class SecurityEnhanced {
     if (!/\d/.test(password)) {
       errors.push('Password must contain at least one number');
     }
-    
+
     // Common pattern checks
     const commonPatterns = [
       /123456/,
@@ -244,52 +244,52 @@ export class SecurityEnhanced {
       /letmein/i,
       /welcome/i
     ];
-    
+
     if (commonPatterns.some(pattern => pattern.test(password))) {
       errors.push('Password contains common patterns that are easy to guess');
     }
-    
+
     // Sequential character checks
     if (/(.)\1{2,}/.test(password)) {
       errors.push('Password cannot contain 3 or more consecutive identical characters');
     }
-    
+
     const isValid = errors.length === 0;
     let strength: 'weak' | 'medium' | 'strong' | 'very-strong' = 'weak';
-    
+
     if (isValid) {
       const score = this.calculatePasswordStrength(password);
       if (score >= 90) strength = 'very-strong';
       else if (score >= 75) strength = 'strong';
       else if (score >= 60) strength = 'medium';
     }
-    
+
     return { isValid, errors, strength };
   }
 
   private static calculatePasswordStrength(password: string): number {
     let score = 0;
-    
+
     // Length bonus
     if (password.length >= 6) score += 20;
     if (password.length >= 12) score += 10;
     if (password.length >= 16) score += 10;
-    
+
     // Character variety
     if (/[a-z]/.test(password)) score += 10;
     if (/[A-Z]/.test(password)) score += 10;
     if (/\d/.test(password)) score += 10;
     if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score += 5; // Optional bonus
-    
+
     // Complexity bonus
     if (/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
       score += 15;
     }
-    
+
     // Entropy bonus
     const uniqueChars = new Set(password).size;
     if (uniqueChars >= 8) score += 10;
-    
+
     return Math.min(score, 100);
   }
 
@@ -305,19 +305,19 @@ export class SecurityEnhanced {
   // Validate phone number with international format support
   static isValidPhone(phone: string): boolean {
     if (!phone) return false;
-    
+
     // Remove all non-digit characters
     const cleanPhone = phone.replace(/\D/g, '');
-    
+
     // Check length (international format: 10-15 digits)
     if (cleanPhone.length < 10 || cleanPhone.length > 15) {
       return false;
     }
-    
+
     // Check for valid country codes (simplified)
     const validCountryCodes = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
     const firstDigit = cleanPhone[0];
-    
+
     return validCountryCodes.includes(firstDigit);
   }
 
@@ -329,7 +329,7 @@ export class SecurityEnhanced {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://*.supabase.co",
+      "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://api.cloudinary.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'"

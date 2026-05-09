@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Image, StyleSheet, Animated, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
 
@@ -92,13 +91,6 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#ffffff', '#f8fafc']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      
       <Animated.View
         style={[
           styles.logoContainer,
@@ -182,17 +174,10 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8fafc',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-  },
-  gradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
   },
   logoContainer: {
     alignItems: 'center',

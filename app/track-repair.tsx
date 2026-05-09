@@ -1,6 +1,17 @@
 import { REPAIR_STEPS } from '@/constants/repairSteps';
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
-import { supabase } from '@/services/supabaseClient';
+import { db } from '@/services/firebaseClient';
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  doc,
+  onSnapshot,
+  serverTimestamp,
+  Timestamp,
+} from 'firebase/firestore';
 import type { Repair } from '@/types/database';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -20,6 +31,30 @@ import {
   View,
 } from 'react-native';
 
+// Helper to convert Firestore doc to Repair type
+const docToRepair = (docSnap: any): Repair => {
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    job_id: data.job_id,
+    name: data.name,
+    phone: data.phone,
+    device_type: data.device_type,
+    model: data.model || null,
+    issue: data.issue,
+    service: data.service,
+    status: data.status,
+    created_at: data.created_at instanceof Timestamp
+      ? data.created_at.toDate().toISOString()
+      : data.created_at || new Date().toISOString(),
+    admin_notes: data.admin_notes || null,
+    rating: data.rating || null,
+    feedback: data.feedback || null,
+    is_deleted: data.is_deleted || false,
+    deleted_at: data.deleted_at || null,
+  };
+};
+
 export default function TrackRepairScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ jobId?: string }>();
@@ -31,17 +66,17 @@ export default function TrackRepairScreen() {
 
   const testConnection = async () => {
     try {
-      console.log('🔧 Testing Supabase connection...');
-      const { data, error } = await supabase!
-        .from('repairs')
-        .select('job_id, status, device_type')
-        .limit(5);
-      
-      console.log('📋 Existing repairs:', data);
-      console.log('❌ Connection error:', error);
-      
-      if (data && data.length > 0) {
-        console.log('✅ Found sample Job IDs:', data.map(r => r.job_id));
+      console.log('🔧 Testing Firestore connection...');
+      const q = query(
+        collection(db, 'repairs'),
+        where('is_deleted', '==', false)
+      );
+      const snapshot = await getDocs(q);
+
+      console.log('📋 Existing repairs:', snapshot.size);
+
+      if (snapshot.size > 0) {
+        console.log('✅ Found sample Job IDs:', snapshot.docs.slice(0, 5).map(d => d.data().job_id));
       }
     } catch (err) {
       console.error('💥 Connection test failed:', err);
@@ -56,7 +91,6 @@ export default function TrackRepairScreen() {
     return { steps, currentIndex };
   };
 
-  // Add a fallback for testing
   const handleTrack = useCallback(async (id?: string) => {
     const searchId = id || jobId.trim();
 
@@ -69,76 +103,76 @@ export default function TrackRepairScreen() {
       Haptics.selectionAsync();
     }
 
-    if (!repair) setLoading(true);
+    setLoading(true);
     setError('');
 
     try {
       console.log('🔍 Searching for Job ID:', searchId);
-      console.log('📡 Supabase URL:', process.env.EXPO_PUBLIC_SUPABASE_URL);
-      
-      const { data, error } = await supabase!
-        .from('repairs')
-        .select('*')
-        .eq('job_id', searchId)
-        .single();
 
-      console.log('📊 Query result:', { data, error });
+      const q = query(
+        collection(db, 'repairs'),
+        where('job_id', '==', searchId)
+      );
+      const snapshot = await getDocs(q);
 
-      if (error) {
-        console.error('❌ Supabase error:', error);
-        if (!repair) { 
-            setError(`Database error: ${error.message}`);
-            Alert.alert('Database Error', error.message);
-        }
-      } else if (!data) {
+      console.log('📊 Query result: found', snapshot.size, 'documents');
+
+      if (snapshot.empty) {
         console.warn('⚠️ No data found for Job ID:', searchId);
-        if (!repair) { 
-            setError('Job ID not found. Please check and try again.');
-            Alert.alert('Not Found', 'Invalid Job ID');
-        }
+        setError('Job ID not found. Please check and try again.');
+        Alert.alert('Not Found', 'Invalid Job ID');
       } else {
-        console.log('✅ Repair data found:', data);
-        setRepair(data);
+        const repairData = docToRepair(snapshot.docs[0]);
+        console.log('✅ Repair data found:', repairData);
+        setRepair(repairData);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('💥 Unexpected error:', err);
-      setError('An unexpected error occurred.');
+      setError(err.message || 'An unexpected error occurred.');
+      Alert.alert('Error', err.message || 'Failed to fetch repair details');
     } finally {
       setLoading(false);
     }
-  }, [jobId, params.jobId, repair]);
+  }, [jobId, params.jobId]);
 
   useEffect(() => {
     testConnection();
   }, []);
 
+  // Effect to handle initial job ID from params or state — run whenever `jobId` changes
+  useEffect(() => {
+    if (!jobId) return;
+    handleTrack(jobId);
+  }, [jobId, handleTrack]);
+
+  // Effect to handle real-time updates
   useEffect(() => {
     if (!jobId) return;
 
-    if (!repair) {
-      handleTrack(jobId);
-    }
+    // Set up Firestore real-time listener
+    const q = query(
+      collection(db, 'repairs'),
+      where('job_id', '==', jobId)
+    );
 
-    const channel = supabase
-      .channel('user-repair-tracking')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'repairs' },
-        (payload) => {
-          if ((payload.new as Repair)?.job_id === jobId) {
-            // Directly update the repair data without calling handleTrack
-            const updatedRepair = payload.new as Repair;
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'modified' || change.type === 'added') {
+          const updatedRepair = docToRepair(change.doc);
+          if (updatedRepair.job_id === jobId) {
             console.log('🔄 Real-time update received:', updatedRepair);
             setRepair(updatedRepair);
           }
         }
-      )
-      .subscribe();
+      });
+    }, (error) => {
+      console.error('💥 Real-time listener error:', error);
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribe();
     };
-  }, [jobId, handleTrack, repair]); 
+  }, [jobId]); // Only depends on jobId, not handleTrack
 
   useEffect(() => {
     const backAction = () => {
@@ -150,7 +184,7 @@ export default function TrackRepairScreen() {
   }, [router]);
 
   useEffect(() => {
-    if (params.jobId) {
+    if (params.jobId && params.jobId !== jobId) {
       setError('');
       setRepair(null);
       setJobId(params.jobId);
@@ -169,18 +203,48 @@ export default function TrackRepairScreen() {
           text: 'Yes',
           style: 'destructive',
           onPress: async () => {
-            const { error } = await (supabase as any)
-              .from('repairs')
-              .update({ 
-                  status: 'cancelled',
-                  updated_at: new Date().toISOString()
-              } as any)
-              .eq('id', repair.id);
-
-            if (!error) {
-              router.back();
-            } else {
-              Alert.alert('Error', 'Failed to cancel request');
+            try {
+              console.log('🔄 Attempting to cancel repair:', repair.job_id);
+              
+              const updateData: any = {
+                status: 'cancelled',
+              };
+              
+              // Only add updated_at if the field exists in the schema
+              if ('updated_at' in repair) {
+                updateData.updated_at = serverTimestamp();
+              }
+              
+              await updateDoc(doc(db, 'repairs', repair.id), updateData);
+              
+              console.log('✅ Repair cancelled successfully:', repair.job_id);
+              
+              // Update local state to reflect the change
+              setRepair(prev => prev ? { ...prev, status: 'cancelled' } : null);
+              
+              Alert.alert(
+                'Success',
+                'Repair request cancelled successfully',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => router.back()
+                  }
+                ]
+              );
+            } catch (error: any) {
+              console.error('💥 Failed to cancel repair:', error);
+              
+              let errorMessage = 'Failed to cancel request';
+              if (error.code === 'permission-denied') {
+                errorMessage = 'You do not have permission to cancel this request';
+              } else if (error.code === 'not-found') {
+                errorMessage = 'Repair request not found';
+              } else if (error.message) {
+                errorMessage = error.message;
+              }
+              
+              Alert.alert('Error', errorMessage);
             }
           },
         },
@@ -281,7 +345,7 @@ export default function TrackRepairScreen() {
                     </View>
                   </View>
                 );
-              })} 
+              })}
             </View>
 
             {repair.admin_notes && (

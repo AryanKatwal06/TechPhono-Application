@@ -4,8 +4,9 @@
  */
 
 export const REPAIR_STATUSES = {
+  PENDING: 'pending',
   RECEIVED: 'received',
-  DIAGNOSING: 'diagnosing', 
+  DIAGNOSING: 'diagnosing',
   REPAIRING: 'repairing',
   REPAIRED: 'repaired',
   COMPLETED: 'completed',
@@ -18,14 +19,14 @@ export type RepairStatusType = typeof REPAIR_STATUSES[keyof typeof REPAIR_STATUS
  * Normalizes status to lowercase for consistent comparison
  */
 export const normalizeStatus = (status: string | null): RepairStatusType | null => {
-  if (!status) return null;
+  if (typeof status !== 'string') return null;
   const normalized = status.toLowerCase().trim();
-  
+
   // Validate against known statuses
   if (Object.values(REPAIR_STATUSES).includes(normalized as RepairStatusType)) {
     return normalized as RepairStatusType;
   }
-  
+
   return null;
 };
 
@@ -33,10 +34,27 @@ export const normalizeStatus = (status: string | null): RepairStatusType | null 
  * Gets active status values for database queries
  */
 export const getActiveStatuses = (): RepairStatusType[] => [
+  REPAIR_STATUSES.PENDING,
   REPAIR_STATUSES.RECEIVED,
   REPAIR_STATUSES.DIAGNOSING,
   REPAIR_STATUSES.REPAIRING,
   REPAIR_STATUSES.REPAIRED
+];
+
+/**
+ * Statuses that represent a closed repair.
+ * Repairs move here only after the final completion step.
+ */
+export const getClosedStatuses = (): RepairStatusType[] => [
+  REPAIR_STATUSES.COMPLETED,
+  REPAIR_STATUSES.CANCELLED
+];
+
+/**
+ * Backward-compatible helper for the final completion state.
+ */
+export const getCompletedStatuses = (): RepairStatusType[] => [
+  REPAIR_STATUSES.COMPLETED
 ];
 
 /**
@@ -53,6 +71,19 @@ export const isActiveStatus = (status: string | null): boolean => {
 };
 
 /**
+ * Case-insensitive status check for closed repairs
+ */
+export const isClosedStatus = (status: string | null): boolean => {
+  const normalized = normalizeStatus(status);
+  return normalized ? getClosedStatuses().includes(normalized) : false;
+};
+
+/**
+ * Backward-compatible alias for closed repairs.
+ */
+export const isCompletedStatus = (status: string | null): boolean => isClosedStatus(status);
+
+/**
  * Formats status for display (capitalizes first letter)
  */
 export const formatStatusForDisplay = (status: string | null): string => {
@@ -61,14 +92,16 @@ export const formatStatusForDisplay = (status: string | null): string => {
 };
 
 /**
- * Creates a case-insensitive status filter for Supabase queries
+ * Creates a case-insensitive status filter for Firestore queries
  */
 export const createStatusFilter = (statuses: RepairStatusType[]) => {
   // Return both lowercase and common capitalized variants for maximum compatibility
-  const allVariants = statuses.flatMap(status => [
-    status,
-    status.charAt(0).toUpperCase() + status.slice(1)
-  ]);
-  
+  const allVariants = statuses
+    .filter((status): status is RepairStatusType => typeof status === 'string' && status.length > 0)
+    .flatMap(status => [
+      status,
+      status.charAt(0).toUpperCase() + status.slice(1)
+    ]);
+
   return allVariants;
 };

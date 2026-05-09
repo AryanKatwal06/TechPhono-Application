@@ -1,5 +1,6 @@
 import { borderRadius, colors, spacing } from '@/constants/theme';
-import { supabase } from '@/services/supabaseClient';
+import { auth } from '@/services/firebaseClient';
+import { updatePassword } from 'firebase/auth';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import type { TextStyle, ViewStyle } from 'react-native';
@@ -27,26 +28,31 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
-      // 2. Supabase Auth Update
-      // Because the user arrived via a magic link (deep link), they currently 
-      // have a valid session. We use updateUser to set the new password.
-      const { error } = await supabase.auth.updateUser({
-        password: password,
-      });
+      // 2. Firebase Auth Update
+      // Because the user arrived via a password reset link, they currently 
+      // have a valid session. We use updatePassword to set the new password.
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        Alert.alert('Error', 'No authenticated user found. Please try the reset link again.');
+        return;
+      }
 
-      if (error) throw error;
+      await updatePassword(currentUser, password);
 
       // 3. Success Handling
       Alert.alert('Success', 'Password updated successfully', [
-        { 
-          text: 'OK', 
+        {
+          text: 'OK',
           // Redirect to login to force a clean re-authentication
-          // or redirect to home if you prefer auto-login.
-          onPress: () => router.replace('/auth/login') 
+          onPress: () => router.replace('/auth/login')
         },
       ]);
     } catch (error: any) {
-      Alert.alert('Update Failed', error.message);
+      if (error.code === 'auth/requires-recent-login') {
+        Alert.alert('Session Expired', 'Please sign in again and then update your password.');
+      } else {
+        Alert.alert('Update Failed', error.message);
+      }
     } finally {
       setLoading(false);
     }

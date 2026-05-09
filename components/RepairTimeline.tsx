@@ -1,4 +1,5 @@
 import { colors, spacing } from '@/constants/theme';
+import { useResponsiveSpacing, useResponsiveTypography, useResponsiveComponentSizes } from '@/utils/responsive';
 import type { RepairStatus } from '@/types/database';
 import {
     CheckCircle2,
@@ -19,7 +20,22 @@ type StatusConfig = {
     description: string;
 };
 const statusConfig: Record<RepairStatus, StatusConfig> = {
+    pending: {
+        label: 'Pending',
+        icon: Clock,
+        description: 'Waiting to be received'
+    },
+    Pending: {
+        label: 'Pending',
+        icon: Clock,
+        description: 'Waiting to be received'
+    },
     received: {
+        label: 'Received',
+        icon: Package,
+        description: 'We received your device'
+    },
+    Received: {
         label: 'Received',
         icon: Package,
         description: 'We received your device'
@@ -29,7 +45,17 @@ const statusConfig: Record<RepairStatus, StatusConfig> = {
         icon: Clock,
         description: 'Checking the issue'
     },
+    Diagnosing: {
+        label: 'Diagnosing',
+        icon: Clock,
+        description: 'Checking the issue'
+    },
     repairing: {
+        label: 'Repairing',
+        icon: Wrench,
+        description: 'Fixing your device'
+    },
+    Repairing: {
         label: 'Repairing',
         icon: Wrench,
         description: 'Fixing your device'
@@ -39,12 +65,27 @@ const statusConfig: Record<RepairStatus, StatusConfig> = {
         icon: CheckCircle2,
         description: 'Ready for pickup'
     },
+    Repaired: {
+        label: 'Repaired',
+        icon: CheckCircle2,
+        description: 'Ready for pickup'
+    },
     completed: {
         label: 'Completed',
         icon: CheckCircle2,
         description: 'Job completed successfully'
     },
+    Completed: {
+        label: 'Completed',
+        icon: CheckCircle2,
+        description: 'Job completed successfully'
+    },
     cancelled: {
+        label: 'Cancelled',
+        icon: X,
+        description: 'Request was cancelled'
+    },
+    Cancelled: {
         label: 'Cancelled',
         icon: X,
         description: 'Request was cancelled'
@@ -61,6 +102,10 @@ export const RepairTimeline: React.FC<RepairTimelineProps> = ({
     status,
     timestamps = {}
 }) => {
+    const spacing_val = useResponsiveSpacing();
+    const typography_val = useResponsiveTypography();
+    const componentSizes = useResponsiveComponentSizes();
+
     const currentIndex = Math.max(
         0,
         statusOrder.indexOf(status)
@@ -75,26 +120,34 @@ export const RepairTimeline: React.FC<RepairTimelineProps> = ({
             minute: '2-digit'
         });
     };
+
+    const iconSize = componentSizes.fabSize * 0.5;
+
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingVertical: spacing_val.md }]}>
             {statusOrder.map((step, index) => {
                 const config = statusConfig[step];
                 const Icon = config.icon;
                 const isActive = index <= currentIndex;
                 const isCurrent = index === currentIndex;
                 return (
-                    <View key={step} style={styles.stepContainer}>
+                    <View key={step} style={[styles.stepContainer, { marginBottom: spacing_val.md }]}>
                         <View style={styles.stepRow}>
-                            <View style={styles.iconLine}>
+                            <View style={[styles.iconLine, { marginRight: spacing_val.md }]}>
                                 <View
                                     style={[
                                         styles.iconWrapper,
+                                        {
+                                            width: iconSize,
+                                            height: iconSize,
+                                            borderRadius: iconSize / 2,
+                                        },
                                         isActive && styles.iconWrapperActive,
                                         isCurrent && styles.iconWrapperCurrent
                                     ]}
                                 >
                                     <Icon
-                                        size={20}
+                                        size={componentSizes.iconMd}
                                         color={isActive ? colors.card : colors.textLight}
                                         strokeWidth={2.5}
                                     />
@@ -108,21 +161,22 @@ export const RepairTimeline: React.FC<RepairTimelineProps> = ({
                                     />
                                 )}
                             </View>
-                            <View style={styles.content}>
+                            <View style={[styles.content, { paddingTop: spacing_val.xs }]}>
                                 <Text
                                     style={[
                                         styles.label,
+                                        { fontSize: typography_val.body, marginBottom: spacing_val.xs },
                                         isActive && styles.labelActive,
                                         isCurrent && styles.labelCurrent
                                     ]}
                                 >
                                     {config.label}
                                 </Text>
-                                <Text style={styles.description}>
+                                <Text style={[styles.description, { fontSize: typography_val.bodySmall, marginBottom: spacing_val.xs }]}>
                                     {config.description}
                                 </Text>
                                 {timestamps[step] && (
-                                    <Text style={styles.timestamp}>
+                                    <Text style={[styles.timestamp, { fontSize: typography_val.caption }]}>
                                         {formatTime(timestamps[step])}
                                     </Text>
                                 )}
@@ -136,21 +190,19 @@ export const RepairTimeline: React.FC<RepairTimelineProps> = ({
 };
 const styles = StyleSheet.create({
     container: {
-        paddingVertical: spacing.md
+        paddingVertical: 0,
     },
     stepContainer: {
-        marginBottom: spacing.md
+        marginBottom: 0,
     },
     stepRow: {
         flexDirection: 'row'
     },
     iconLine: {
         alignItems: 'center',
-        marginRight: spacing.md
+        marginRight: 0,
     },
     iconWrapper: {
-        width: 44,
-        height: 44,
         borderRadius: 22,
         backgroundColor: colors.background,
         borderWidth: 2,
@@ -178,13 +230,12 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        paddingTop: spacing.xs
+        paddingTop: 0,
     },
     label: {
-        fontSize: 16,
         fontWeight: '600',
         color: colors.textSecondary,
-        marginBottom: 2
+        marginBottom: 0,
     },
     labelActive: {
         color: colors.text
@@ -194,12 +245,10 @@ const styles = StyleSheet.create({
         fontWeight: '700'
     },
     description: {
-        fontSize: 14,
         color: colors.textSecondary,
-        marginBottom: 4
+        marginBottom: 0,
     },
     timestamp: {
-        fontSize: 12,
         color: colors.textLight
     }
 });

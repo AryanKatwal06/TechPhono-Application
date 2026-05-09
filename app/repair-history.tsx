@@ -1,6 +1,8 @@
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/services/supabaseClient';
+import { db } from '@/services/firebaseClient';
+import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
+import { createStatusFilter, getClosedStatuses } from '@/utils/statusUtils';
 import type { Repair } from '@/types/database';
 import * as Haptics from 'expo-haptics';
 import { Stack, useRouter } from 'expo-router';
@@ -24,23 +26,57 @@ export default function ProfileScreen() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   useEffect(() => {
     const fetchRepairs = async () => {
-      const userPhone = user?.user_metadata?.phone || user?.phone;
-      if (!userPhone) {
+      const userPhone = user?.phoneNumber || '';
+      // Try to get phone from Firestore user profile or displayName metadata
+      if (!userPhone && !user) {
         setLoadingHistory(false);
         return;
       }
       setLoadingHistory(true);
       try {
-        console.log('🔍 Fetching repair history for phone:', userPhone);
-        const { data, error } = await supabase!
-          .from('repairs')
-          .select('*')
-          .eq('phone', userPhone)
-          .in('status', ['completed', 'cancelled'])
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        console.log('📊 Found repairs:', data?.length || 0, data);
-        setRepairs(data || []);
+        console.log('🔍 Fetching repair history for user:', user?.uid);
+
+        // Query repairs by user_id (more reliable than phone number matching)
+        let q;
+        if (user?.uid) {
+            const completedStatuses = createStatusFilter(getClosedStatuses());
+            q = query(
+              collection(db, 'repairs'),
+              where('user_id', '==', user.uid),
+              where('status', 'in', completedStatuses),
+              orderBy('created_at', 'desc')
+            );
+        } else {
+          setLoadingHistory(false);
+          return;
+        }
+
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(docSnap => {
+          const d = docSnap.data();
+          return {
+            id: docSnap.id,
+            job_id: d.job_id,
+            name: d.name,
+            phone: d.phone,
+            device_type: d.device_type,
+            model: d.model || null,
+            issue: d.issue,
+            service: d.service,
+            status: d.status,
+            created_at: d.created_at instanceof Timestamp
+              ? d.created_at.toDate().toISOString()
+              : d.created_at || new Date().toISOString(),
+            admin_notes: d.admin_notes || null,
+            rating: d.rating || null,
+            feedback: d.feedback || null,
+            is_deleted: d.is_deleted || false,
+            deleted_at: d.deleted_at || null,
+          } as Repair;
+        });
+
+        console.log('📊 Found repairs:', data.length);
+        setRepairs(data);
       } catch (error) {
         console.error('Fetch error:', error);
       } finally {
@@ -84,9 +120,9 @@ export default function ProfileScreen() {
         return colors.textLight;
     }
   };
-  const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || 'TechPhono User';
+  const displayName = user?.displayName || 'TechPhono User';
   const displayEmail = user?.email || '';
-  const displayPhone = user?.user_metadata?.phone || user?.phone || '';
+  const displayPhone = user?.phoneNumber || '';
   if (loading || !user) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
@@ -164,84 +200,27 @@ export default function ProfileScreen() {
   );
 }
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'android' ? 40 : spacing.xl,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-  },
+  container: { flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 40 : spacing.xl },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
   content: { padding: spacing.lg },
-  profileCard: {
-    backgroundColor: colors.card,
-    padding: spacing.xl,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-    ...shadows.md,
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#EEF2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
+  profileCard: { backgroundColor: colors.card, padding: spacing.xl, borderRadius: borderRadius.lg, alignItems: 'center', marginBottom: spacing.xl, ...shadows.md },
+  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
   name: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 4 },
   infoText: { fontSize: 14, color: colors.textSecondary, marginBottom: 2 },
   sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: spacing.md, color: colors.text },
   emptyText: { color: colors.textSecondary, textAlign: 'center', marginVertical: 20 },
-  repairCard: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    ...shadows.sm,
-  },
+  repairCard: { backgroundColor: colors.card, borderRadius: borderRadius.lg, padding: spacing.lg, marginBottom: spacing.md, ...shadows.sm },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md },
   jobId: { fontSize: 16, fontWeight: '700', color: colors.primary },
   device: { fontSize: 14, color: colors.textSecondary },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
   statusText: { fontSize: 11, fontWeight: '700' },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.sm,
-  },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm },
   date: { fontSize: 13, color: colors.textLight },
   deleteItemText: { fontSize: 13, color: colors.danger, fontWeight: '500' },
   actionContainer: { marginTop: spacing.xl, gap: spacing.md },
-  logoutButton: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.sm,
-  },
+  logoutButton: { flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.primary, padding: spacing.md, borderRadius: borderRadius.md, justifyContent: 'center', alignItems: 'center', ...shadows.sm },
   logoutText: { color: '#fff', fontWeight: '600', fontSize: 16 },
 });

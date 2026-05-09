@@ -1,39 +1,42 @@
 import { deviceTypes } from '@/constants/services';
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/services/supabaseClient';
+import { db } from '@/services/firebaseClient';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { formatBookingMessage, openWhatsAppChat } from '@/services/whatsapp';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    BackHandler,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  BackHandler,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+
 export default function BookingScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ service?: string }>();
   const { user, loading } = useAuth();
   const [formData, setFormData] = useState({
-    name: user?.user_metadata?.full_name || user?.user_metadata?.name || '',
-    phone: user?.user_metadata?.phone || '', 
+    name: user?.displayName || '',
+    phone: '',
     deviceType: '',
     model: '',
     issue: '',
     service: params.service || '',
   });
   const [submitting, setSubmitting] = useState(false);
+
   useEffect(() => {
     const backAction = () => {
       router.replace('/(tabs)');
@@ -42,6 +45,7 @@ export default function BookingScreen() {
     const handler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => handler.remove();
   }, [router]);
+
   const handleSubmit = async () => {
     const { name, phone, deviceType, model, issue, service } = formData;
     if (!name || !phone || !deviceType || !issue || !service) {
@@ -62,16 +66,22 @@ export default function BookingScreen() {
         model,
         issue,
         service,
-        status: 'Received',
+        status: 'received',
         admin_notes: '',
-        user_id: user?.id || null,
+        user_id: user?.uid || null,
+        is_deleted: false,
+        deleted_at: null,
+        rating: 0,
+        feedback: '',
+        created_at: serverTimestamp(),
       };
-      const { error } = await supabase.from('repairs').insert([payload] as any);
-      if (error) throw error;
+
+      await addDoc(collection(db, 'repairs'), payload);
+
       const message = formatBookingMessage({
         name, phone, deviceType, model, issue, service, jobId,
       });
-      openWhatsAppChat(message).catch(() => {});
+      openWhatsAppChat(message).catch(() => { });
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
@@ -86,6 +96,7 @@ export default function BookingScreen() {
       setSubmitting(false);
     }
   };
+
   if (loading || !user) {
     return (
       <View style={styles.loaderContainer}>
@@ -93,6 +104,7 @@ export default function BookingScreen() {
       </View>
     );
   }
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -196,6 +208,7 @@ export default function BookingScreen() {
     </KeyboardAvoidingView>
   );
 }
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },

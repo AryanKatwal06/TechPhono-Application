@@ -1,11 +1,12 @@
 import type { Product } from '@/constants/products';
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { useTechPhono } from '@/context/TechPhonoContext';
-import { supabase } from '@/services/supabaseClient';
+import { db } from '@/services/firebaseClient';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import type { CartItem } from '@/types/cart';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Image as ImageIcon, Minus, Plus } from 'lucide-react-native';
+import { ArrowLeft, Minus, Plus, ShoppingCart } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,7 +19,8 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  useWindowDimensions,
 } from 'react-native';
 
 interface ProductCardProps {
@@ -27,6 +29,7 @@ interface ProductCardProps {
   onAdd: () => void;
   onIncrease: () => void;
   onDecrease: () => void;
+  columnWidth: number;
 }
 
 function ProductCard({
@@ -35,9 +38,11 @@ function ProductCard({
   onAdd,
   onIncrease,
   onDecrease,
+  columnWidth,
 }: ProductCardProps) {
   const badgeAnim = useRef(new Animated.Value(0)).current;
   const quantityAnim = useRef(new Animated.Value(1)).current;
+  const cardWidth = columnWidth - spacing.md;
 
   useEffect(() => {
     Animated.spring(badgeAnim, {
@@ -63,18 +68,19 @@ function ProductCard({
     }
   }, [quantity, quantityAnim]);
 
+  const buttonSize = 24;
+
   return (
-    <View style={styles.card}>
-      {/* ✅ STEP 5 & 6: RENDER IMAGE WITH SAFE FALLBACK */}
+    <View style={[styles.card, { width: cardWidth, marginRight: spacing.md, marginBottom: spacing.md }]}>
       {product.image_url || product.image ? (
         <Image
           source={{ uri: product.image_url || product.image }}
-          style={styles.productImage}
+          style={{ width: '100%', height: cardWidth - spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.sm }}
           resizeMode="cover"
         />
       ) : (
-        <View style={[styles.productImage, styles.placeholderContainer]}>
-          <ImageIcon size={24} color="#ccc" />
+        <View style={{ width: '100%', height: cardWidth - spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.sm, backgroundColor: '#f0f0f0', alignItems: 'center', justifyContent: 'center' }}>
+          <ShoppingCart size={24} color="#ccc" />
         </View>
       )}
 
@@ -82,131 +88,123 @@ function ProductCard({
         <Animated.View
           style={[
             styles.badge,
-            { transform: [{ scale: badgeAnim }], opacity: badgeAnim },
+            {
+              transform: [{ scale: badgeAnim }],
+              opacity: badgeAnim,
+            },
           ]}
         >
           <Text style={styles.badgeText}>{quantity}</Text>
         </Animated.View>
       )}
-      <View style={styles.productInfo}>
-        <Text style={styles.productName} numberOfLines={1}>
-          {product.name}
-        </Text>
-        <Text style={styles.productDescription} numberOfLines={2}>
-          {product.description}
-        </Text>
-        <View style={styles.productFooter}>
-          <Text style={styles.productPrice}>₹{product.price}</Text>
-        </View>
-        {quantity > 0 ? (
-          <View style={styles.quantityControl}>
-            <TouchableOpacity onPress={onDecrease} style={styles.ctrlBtn}>
-              <Minus size={14} color={colors.primary} />
-            </TouchableOpacity>
-            <Animated.Text
-              style={[
-                styles.quantityText,
-                { transform: [{ scale: quantityAnim }] },
-              ]}
-            >
-              {quantity}
-            </Animated.Text>
-            <TouchableOpacity onPress={onIncrease} style={styles.ctrlBtn}>
-              <Plus size={14} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={onAdd}
-            activeOpacity={0.8}
-          >
-            <Plus size={20} color="#fff" />
-          </TouchableOpacity>
-        )}
+      
+      <Text style={styles.productName} numberOfLines={1}>
+        {product.name}
+      </Text>
+      <Text style={styles.productDescription} numberOfLines={2}>
+        {product.description}
+      </Text>
+      
+      <View style={styles.productFooter}>
+        <Text style={styles.productPrice}>₹{product.price}</Text>
       </View>
+      
+      {quantity > 0 ? (
+        <View style={styles.quantityControl}>
+          <TouchableOpacity onPress={onDecrease} style={[styles.ctrlBtn, { width: buttonSize, height: buttonSize }]}>
+            <Minus size={14} color={colors.primary} />
+          </TouchableOpacity>
+          <Animated.Text style={[styles.quantityText, { transform: [{ scale: quantityAnim }] }]}>
+            {quantity}
+          </Animated.Text>
+          <TouchableOpacity onPress={onIncrease} style={[styles.ctrlBtn, { width: buttonSize, height: buttonSize }]}>
+            <Plus size={14} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={[styles.addButton, { height: buttonSize + 8 }]}
+          onPress={onAdd}
+          activeOpacity={0.8}
+        >
+          <Plus size={16} color="#fff" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 export default function ShopScreen() {
+  const { width } = useWindowDimensions();
   const router = useRouter();
   const { addToCart, cart, updateCartQuantity, removeFromCart } = useTechPhono();
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchItems();
+  // Determine columns
+  const isMobile = width < 600;
+  const isTablet = width >= 600;
+  const columns = isMobile ? 2 : isTablet && width < 1024 ? 3 : 4;
+  const columnWidth = (width - spacing.lg * 2 - spacing.md * (columns - 1)) / columns;
 
-    // Set up real-time subscription for new items
-    const subscription = supabase
-      .channel('items_changes')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'items' },
-        (payload) => {
-          console.log('New item added:', payload.new);
-          // Refresh items when a new item is added
-          fetchItems();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'items' },
-        (payload) => {
-          console.log('Item updated:', payload.new);
-          // Refresh items when an item is updated
-          fetchItems();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const fetchItems = async () => {
-    try {
-      setLoading(true);
-      // ✅ STEP 4: FETCH IMAGE URL AND FILTER DELETED ITEMS
-      const { data, error } = await supabase
-        .from('items')
-        .select('id, name, description, price, image_url, created_at')
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching items:', error);
-      } else {
-        const mappedData = (data || []).map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description,
-          price: item.price,
-          image: item.image_url || '',
-          image_url: item.image_url,
-          category: 'Accessories' as const,
-          inStock: true,
-        }));
-        setItems(mappedData);
-      }
-    } catch (err) {
-      console.error('Unexpected error:', err);
-    } finally {
-      setLoading(false);
+  const getCreatedAtMs = (value: unknown) => {
+    if (!value) return 0;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = Date.parse(value);
+      return Number.isNaN(parsed) ? 0 : parsed;
     }
+    if (typeof value === 'object' && value !== null) {
+      const timestamp = value as { toMillis?: () => number; seconds?: number; nanoseconds?: number };
+      if (typeof timestamp.toMillis === 'function') return timestamp.toMillis();
+      if (typeof timestamp.seconds === 'number') {
+        return timestamp.seconds * 1000 + Math.floor((timestamp.nanoseconds || 0) / 1_000_000);
+      }
+    }
+    return 0;
   };
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'items'),
+      where('is_deleted', '==', false)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const mappedData = snapshot.docs
+        .map((docSnap) => {
+          const item = docSnap.data();
+          return {
+            id: docSnap.id,
+            createdAtMs: getCreatedAtMs(item.created_at),
+            name: item.name,
+            description: item.description,
+            price: item.price,
+            image: item.image_url || '',
+            image_url: item.image_url,
+            category: 'Accessories' as const,
+            inStock: true,
+          };
+        })
+        .sort((left, right) => right.createdAtMs - left.createdAtMs)
+        .map(({ createdAtMs, ...item }) => item);
+
+      setItems(mappedData);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching items:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const backAction = () => {
       router.back();
       return true;
     };
-    const handler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      backAction
-    );
+    const handler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => handler.remove();
   }, [router]);
 
@@ -214,22 +212,17 @@ export default function ShopScreen() {
     cart.find((i) => i.product.id === productId)?.quantity || 0;
 
   const add = (product: Product) => {
-    if (Platform.OS !== 'web') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     addToCart({ product, quantity: 1 });
   };
 
-  const increase = (item: CartItem) => {
-    updateCartQuantity(item.product.id, item.quantity + 1);
-  };
-
+  const increase = (item: CartItem) => updateCartQuantity(item.product.id, item.quantity + 1);
   const decrease = (item: CartItem) => {
     if (item.quantity <= 1) {
       removeFromCart(item.product.id);
-      return;
+    } else {
+      updateCartQuantity(item.product.id, item.quantity - 1);
     }
-    updateCartQuantity(item.product.id, item.quantity - 1);
   };
 
   const renderItem = ({ item }: { item: Product }) => {
@@ -242,6 +235,7 @@ export default function ShopScreen() {
         onAdd={() => add(item)}
         onIncrease={() => cartItem && increase(cartItem)}
         onDecrease={() => cartItem && decrease(cartItem)}
+        columnWidth={columnWidth}
       />
     );
   };
@@ -253,7 +247,6 @@ export default function ShopScreen() {
       </View>
     );
   }
-
   if (items.length === 0) {
     return (
       <View style={styles.container}>
@@ -261,9 +254,12 @@ export default function ShopScreen() {
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <ArrowLeft size={22} color={colors.text} />
           </Pressable>
-          <Text style={styles.headerTitle}>Shop</Text>
+          <View>
+            <Text style={styles.headerTitle}>Shop</Text>
+            <Text style={styles.headerSubtitle}>Accessories & Parts</Text>
+          </View>
         </View>
-        <Text style={{ textAlign: 'center', marginTop: 40, color: colors.textSecondary }}>
+        <Text style={{ textAlign: 'center', marginTop: 40, color: colors.textLight }}>
           No products available
         </Text>
       </View>
@@ -278,10 +274,7 @@ export default function ShopScreen() {
             if (Platform.OS !== 'web') Haptics.selectionAsync();
             router.back();
           }}
-          style={({ pressed }) => [
-            styles.backButton,
-            pressed && { opacity: 0.6 },
-          ]}
+          style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.6 }]}
         >
           <ArrowLeft size={22} color={colors.text} />
         </Pressable>
@@ -292,19 +285,20 @@ export default function ShopScreen() {
       </View>
       <FlatList
         data={items}
-        numColumns={2}
+        numColumns={columns}
         columnWrapperStyle={{
           justifyContent: 'space-between',
           gap: spacing.md,
-          marginBottom: spacing.lg,
+          paddingHorizontal: spacing.lg,
         }}
         contentContainerStyle={{
           paddingBottom: 120,
-          paddingTop: spacing.sm,
+          paddingTop: spacing.md,
         }}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
+        scrollIndicatorInsets={{ right: 1 }}
       />
     </View>
   );
@@ -314,14 +308,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'android' ? 40 : spacing.xl,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: spacing.lg,
     gap: spacing.md,
-    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
   },
   backButton: {
     width: 40,
@@ -331,109 +325,109 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: colors.text,
   },
   headerSubtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    fontSize: 12,
+    color: colors.textLight,
     marginTop: 2,
   },
   card: {
-    flex: 1,
     backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    padding: 12,
-    marginBottom: spacing.xs,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
     ...shadows.sm,
-    position: 'relative',
-    maxWidth: '48%',
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
   productImage: {
     width: '100%',
-    aspectRatio: 1,
+    height: 150,
     borderRadius: borderRadius.md,
-    marginBottom: 8,
-    backgroundColor: '#f0f0f0',
+    marginBottom: spacing.sm,
+    backgroundColor: '#f5f5f5',
   },
   placeholderContainer: {
-    justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#eee',
+    justifyContent: 'center',
   },
-  productInfo: { flex: 1 },
+  badge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: colors.danger,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  badgeText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 10,
+  },
+  productInfo: {
+    gap: spacing.sm,
+  },
   productName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 4,
   },
   productDescription: {
-    color: colors.textSecondary,
     fontSize: 12,
-    marginBottom: 12,
-    height: 32,
+    color: colors.textLight,
   },
   productFooter: {
-    marginTop: 'auto',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   productPrice: {
     fontSize: 16,
     fontWeight: '700',
     color: colors.primary,
   },
-  addButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
   quantityControl: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 20,
-    padding: 2,
+    justifyContent: 'space-between',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.sm,
+    padding: spacing.xs,
   },
   ctrlBtn: {
-    width: 28,
-    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
-    backgroundColor: '#fff',
-    elevation: 1,
+    borderRadius: borderRadius.sm,
   },
   quantityText: {
     fontWeight: '700',
-    paddingHorizontal: 8,
-    fontSize: 13,
+    fontSize: 12,
+    color: colors.primary,
   },
-  badge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
+  addButton: {
     backgroundColor: colors.primary,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    zIndex: 10,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 });

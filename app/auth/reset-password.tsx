@@ -3,7 +3,7 @@ import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { useRouter, useSearchParams } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -18,10 +18,16 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import AuthFeedback from '@/components/AuthFeedback';
+import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
+import { auth, db } from '@/services/firebaseClient';
+import { collection, query, where, getDocs, updateDoc, serverTimestamp, doc } from 'firebase/firestore';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
   const { updatePassword } = useAuth();
+  const params = useSearchParams();
+  const oobCode = params?.oobCode as string | undefined;
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -38,30 +44,91 @@ export default function ResetPasswordScreen() {
     return () => handler.remove();
   }, [router]);
 
+  useEffect(() => {
+    // If an out-of-band code is present, validate it on load to give early feedback
+    let mounted = true;
+    (async () => {
+      if (!oobCode) return;
+      try {
+        const email = await verifyPasswordResetCode(auth, oobCode);
+        if (mounted) {
+          Alert.alert('Reset Link Valid', `Resetting password for ${email}`);
+        }
+      } catch (err) {
+        console.error('Invalid or expired reset code:', err);
+        if (mounted) {
+          Alert.alert('Invalid Link', 'The password reset link is invalid or expired.');
+          router.replace('/auth/forgot-password');
+        }
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [oobCode, router]);
+
   const handleResetPassword = async () => {
+    // Basic validations
+    setError('');
     if (!password || !confirmPassword) {
       setError('Please fill in all required fields');
       return;
     }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return;
-    }
-
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
 
-    setLoading(true);
-    setError('');
-
-    if (Platform.OS !== 'web') {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Strong password check
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+    const strongRegex = /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])/;
+    if (!strongRegex.test(password)) {
+      setError('Password must include uppercase, lowercase, number and special character');
+      return;
     }
 
+    setLoading(true);
     try {
+      if (Platform.OS !== 'web') {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      if (oobCode) {
+        // Confirm via Firebase OOB flow
+        await confirmPasswordReset(auth, oobCode, password);
+
+        // Attempt to update users collection timestamp (best-effort)
+        try {
+          const email = await verifyPasswordResetCode(auth, oobCode);
+          const usersRef = collection(db, 'users');
+          const q = query(usersRef, where('email', '==', email));
+          const snapshot = await getDocs(q);
+          const updates: Promise<any>[] = [];
+          snapshot.forEach((docSnap) => {
+            updates.push(updateDoc(doc(db, 'users', docSnap.id), {
+              passwordUpdatedAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            }));
+          });
+          await Promise.all(updates);
+        } catch (dbErr) {
+          console.warn('Unable to update passwordUpdatedAt field:', dbErr);
+        }
+
+        if (Platform.OS !== 'web') {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+
+        Alert.alert('Success', 'Password updated successfully. Please login again.', [
+          { text: 'OK', onPress: () => router.replace('/auth/login') },
+        ]);
+        return;
+      }
+
+      // No oobCode - update current signed-in user's password
       const errorMsg = await updatePassword(password);
       if (errorMsg) {
         setError(errorMsg);
@@ -69,7 +136,6 @@ export default function ResetPasswordScreen() {
         if (Platform.OS !== 'web') {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         }
-        setLoading(false);
         return;
       }
 
@@ -77,20 +143,13 @@ export default function ResetPasswordScreen() {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
-      Alert.alert(
-        'Success',
-        'Your password has been reset successfully. You can now login with your new password.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              router.replace('/auth/login');
-            },
-          },
-        ]
-      );
-    } catch {
-      setError('An unexpected error occurred');
+      Alert.alert('Success', 'Your password has been reset successfully. You can now login with your new password.', [
+        { text: 'OK', onPress: () => router.replace('/auth/login') },
+      ]);
+    } catch (err: any) {
+      console.error('Reset password error:', err);
+      setError(err?.message || 'An unexpected error occurred');
+    } finally {
       setLoading(false);
     }
   };
@@ -178,6 +237,8 @@ export default function ResetPasswordScreen() {
               {loading ? 'Resetting Password…' : 'Reset Password'}
             </Text>
           </TouchableOpacity>
+
+          <AuthFeedback visible={loading} message={loading ? 'Resetting Password…' : undefined} />
 
           <View style={styles.loginContainer}>
             <Text style={styles.loginText}>Remember your password? </Text>

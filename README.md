@@ -1,395 +1,557 @@
-# 🔧 TechPhono – Mobile Repair & Service Management Application
+# TechPhono Repair App
 
-TechPhono is a **full-stack mobile repair service management application** built using **Expo (React Native)** and **Supabase**.  
-The app is designed to streamline the entire mobile repair workflow — from user booking, admin repair management, real-time status tracking, to service & shop item management.
+TechPhono is a mobile repair and service management application built with Expo and React Native, backed by Firebase. It supports the full workflow for a repair shop: customer sign-up, repair booking, live status tracking, repair history, admin review and status updates, service management, and shop item management.
 
-The project follows a **production-ready architecture**, focusing on **scalability**, **real-time synchronization**, **clean UI**, and **robust authentication**.
+The codebase is structured to be public-repo friendly: local secrets are kept out of source control, Firebase rules are committed separately, and the app uses environment-based configuration for all external services.
 
----
+## What The App Does
 
-## 📱 What is TechPhono?
+### Customer experience
 
-TechPhono is a **customer–admin based repair ecosystem** where:
+- Create an account and sign in with Firebase Auth.
+- Submit a repair booking with device details and issue description.
+- Track repair progress in real time.
+- View closed repair history.
+- Submit feedback after a repair is completed.
+- Browse services and shop items.
+- Use the WhatsApp shortcut for direct shop contact.
 
-### 👤 Users can:
-- Register & log in securely  
-- Book repair requests  
-- Track repair status in real time  
-- View repair history  
-- Cancel requests when needed  
-- Browse available services and shop items  
+### Admin experience
 
-### 🛠️ Admins can:
-- Log in through a protected admin panel  
-- View and manage incoming repair requests  
-- Update repair status step-by-step  
-- Add notes for each repair  
-- Mark repairs as completed or cancelled  
-- Manage services and shop items (add/delete)  
-- View full repair history  
+- Open a protected admin dashboard.
+- View active repairs and repair history.
+- Update repair status from one stage to the next.
+- Add internal notes to repair records.
+- Archive or close repairs.
+- Add, edit, and soft-delete services.
+- Add and remove shop items with image uploads through Cloudinary.
 
-➡️ All data is synced instantly between user and admin using **Supabase real-time capabilities**.
+## Tech Stack
 
----
+### App runtime
 
-## 🧠 Core Philosophy
+- Expo SDK 54
+- React Native 0.81
+- React 19
+- TypeScript
+- Expo Router for file-based routing
 
-The app is built with the following principles:
+### Firebase backend
 
-- **Single Source of Truth** → Supabase Database  
-- **No AsyncStorage for Auth Logic** → Fully Supabase-driven  
-- **Real-time Sync** → Admin updates reflect instantly on user side  
-- **Clean UI/UX** → Proper spacing, padding, and smooth interactions  
-- **Scalable Architecture** → Easy to extend features later  
+- Firebase Authentication
+- Cloud Firestore
+- Firebase Storage
+- Firebase Cloud Functions
+- Firestore security rules
+- Storage security rules
 
----
+### Supporting services
 
-## 🧩 Tech Stack
+- Cloudinary for client-side item image uploads
+- WhatsApp deep-linking for repair booking messages
+- AsyncStorage for local persistence where needed
 
-### 📱 Frontend (Mobile App)
-- Expo (React Native)  
-- TypeScript  
-- Expo Router (File-based routing)  
-- React Context API  
-- Expo Vector Icons / Lucide Icons  
-- Expo Haptics  
-- Expo Image Picker  
+### Tooling
 
-### 🗄️ Backend & Database
-- Supabase  
-- Authentication (Email & Password)  
-- PostgreSQL Database  
-- Row Level Security (RLS)  
-- Real-time subscriptions  
+- ESLint
+- TypeScript type checking
+- Expo CLI / EAS-ready project structure
 
-### 🛠️ Tooling
-- Node.js  
-- npm  
-- Git  
-- Expo Go (for testing)  
+## Key Features
 
----
+### Authentication
 
-## 🏗️ Application Architecture
+- Email and password sign-up and login
+- Password reset via Firebase email action links
+- Native session persistence through Firebase Auth + AsyncStorage
+- Admin route gating based on configured admin emails
 
-### 1️⃣ Authentication Layer
-Supabase Auth handles:
-- Email + Password login  
-- Email verification  
-- Forgot password via email OTP  
-- Admin access via email-based role logic  
-- Secure session persistence  
+### Repair workflow
 
-### 2️⃣ User Layer
-Users interact with:
-- Home screen  
-- Booking screen  
-- Track repair screen  
-- Repair history  
-- Profile & logout  
+- Repair booking creates a Firestore repair document
+- Real-time tracking updates are delivered through Firestore listeners
+- Repairs move through the standard lifecycle:
+  - pending
+  - received
+  - diagnosing
+  - repairing
+  - repaired
+  - completed
+  - cancelled
 
-### 3️⃣ Admin Layer
-Admins have access to:
-- Admin dashboard  
-- Active repair requests  
-- Repair details screen  
-- Repair status timeline  
-- Notes section  
-- Manage services  
-- Manage shop items  
-- History view  
+### Admin workflow
 
-### 4️⃣ Database Layer
-Supabase PostgreSQL tables handle:
-- Users  
-- Repairs  
-- Repair status  
-- Services  
-- Shop items  
-- History records  
+- Admin dashboard shows the current repair load and status snapshot
+- Active repairs and history are separated by status
+- Repair detail screens support status changes and note updates
+- Completed and cancelled repairs are filtered into history views
 
----
+### Catalog management
 
-## 📁 Project Folder Structure
+- Services can be created, edited, and soft-deleted
+- Shop items can be added and removed from the catalog
+- Item images are uploaded directly to Cloudinary
 
+### Security and public-release hardening
+
+- Environment variables are used for all sensitive config
+- Firebase Firestore and Storage rules are committed separately
+- Local build output and Firebase CLI state are ignored in Git
+- Debug and validation logic is centralized in `config/security.ts`
+
+## Architecture Overview
+
+### App layers
+
+1. Presentation layer
+
+   - `app/` contains all screens and routes.
+   - `components/` contains reusable UI pieces like the logo, timeline, feedback modal, and floating action button.
+
+2. State and business logic
+
+   - `context/AuthContext.tsx` handles authentication state and auth actions.
+   - `context/TechPhonoContext.tsx` manages cart and repair operations.
+   - `utils/` contains validation, error handling, status helpers, and session logic.
+
+3. Data and services
+
+   - `services/firebaseClient.ts` initializes Firebase app, Auth, Firestore, and Storage.
+   - `services/whatsapp.ts` builds the repair booking message and opens WhatsApp.
+   - `services/dynamicLinks.ts` parses Firebase action links and wrapped dynamic links.
+
+4. Security and configuration
+
+   - `config/security.ts` reads environment variables and validates required values.
+   - `config/securityEnhanced.ts` includes sanitization, password checks, logging helpers, and CSP settings.
+   - `middleware/apiSecurity.ts` manages request/security token handling.
+
+### Data model
+
+The app uses Firestore collections instead of a relational database.
+
+#### `repairs`
+
+Stores repair requests and their lifecycle state.
+
+Typical fields:
+
+- `job_id`
+- `name`
+- `phone`
+- `device_type`
+- `model`
+- `issue`
+- `service`
+- `status`
+- `admin_notes`
+- `rating`
+- `feedback`
+- `is_deleted`
+- `deleted_at`
+- `user_id`
+- `created_at`
+- `updated_at`
+
+#### `items`
+
+Stores shop inventory items.
+
+Typical fields:
+
+- `name`
+- `description`
+- `price`
+- `image_url`
+- `is_active`
+- `is_deleted`
+- `created_at`
+
+#### `services`
+
+Stores repair service offerings.
+
+Typical fields:
+
+- `name`
+- `description`
+- `price`
+- `is_deleted`
+- `created_at`
+- `updated_at`
+
+#### `users`
+
+Stores profile and verification metadata.
+
+Typical fields:
+
+- `email`
+- `name`
+- `phone`
+- `avatar_url`
+- `isVerified`
+- `verifiedAt`
+- `authProvider`
+- `createdAt`
+- `updatedAt`
+
+#### `users/{uid}/security_tokens`
+
+Stores short-lived token data such as CSRF protection payloads.
+
+## Project Structure
+
+```text
+app/
+  _layout.tsx
+  index.tsx
+  booking.tsx
+  feedback.tsx
+  repair-history.tsx
+  track-repair.tsx
+  reset-password.tsx
+  auth/
+  admin/
+  (tabs)/
+
+components/
+  AppLogo.tsx
+  AuthFeedback.tsx
+  RepairTimeline.tsx
+  SplashScreen.tsx
+  WhatsAppFAB.tsx
+  ...
+
+config/
+  security.ts
+  securityEnhanced.ts
+
+constants/
+  theme.ts
+  typography.ts
+  services.ts
+  repairSteps.ts
+  products.ts
+
+context/
+  AuthContext.tsx
+  TechPhonoContext.tsx
+
+functions/
+  src/index.ts
+  package.json
+  tsconfig.json
+
+middleware/
+  apiSecurity.ts
+  securityMonitor.ts
+
+services/
+  firebaseClient.ts
+  dynamicLinks.ts
+  whatsapp.ts
+
+types/
+  cart.ts
+  database.ts
+
+utils/
+  responsive.ts
+  statusUtils.ts
+  validation.ts
+  errorHandler.ts
+  sessionManager.ts
 ```
-TechPhono-Repair-App
-│
-├── .expo/                          # Expo internal files
-├── android/                        # Android native build files
-│
-├── app/                            # Expo Router (App entry point)
-│   │
-│   ├── (tabs)/                     # Bottom tab navigation (User)
-│   │   ├── _layout.tsx             # Tabs layout
-│   │   ├── index.tsx               # Home screen
-│   │   ├── cart.tsx                # Cart screen
-│   │   ├── services.tsx            # Services listing
-│   │   └── shop.tsx                # Shop screen
-│   │
-│   ├── admin/                      # Admin-only screens
-│   │   ├── repair/
-│   │   │   └── [id].tsx             # Repair details (dynamic route)
-│   │   ├── _layout.tsx              # Admin layout
-│   │   ├── index.tsx                # Admin dashboard
-│   │   ├── history.tsx              # Completed & cancelled repairs
-│   │   ├── repairs.tsx              # All repair requests
-│   │   ├── manage-items.tsx         # Manage shop items
-│   │   └── manage-services.tsx      # Manage services
-│   │
-│   ├── auth/                       # Authentication screens
-│   │   ├── callback.tsx            # Auth callback handler
-│   │   ├── login.tsx               # Login screen
-│   │   ├── register.tsx            # Registration screen
-│   │   ├── forgot-password.tsx     # Forgot password
-│   │   └── reset-password.tsx      # Reset password
-│   │
-│   ├── _layout.tsx                 # Root layout
-│   ├── +not-found.tsx              # 404 screen
-│   ├── index.tsx                   # App entry / role-based redirect
-│   ├── booking.tsx                 # Repair booking
-│   ├── feedback.tsx                # User feedback
-│   ├── repair-history.tsx          # User repair history
-│   ├── reset-password.tsx          # Reset password (route)
-│   └── track-repair.tsx            # Live repair tracking
-│
-├── assets/                         # Static assets
-│   └── images/
-│       └── logo.png
-│
-├── components/
-│   └── ui/                         # Reusable UI components
-│       ├── AppLogo.tsx
-│       ├── AnimatedPressable.tsx
-│       ├── RatingStars.tsx
-│       ├── RepairTimeline.tsx
-│       ├── Skeleton.tsx
-│       ├── SkeletonLoader.tsx
-│       ├── WhatsAppFAB.tsx
-│       ├── collapsible.tsx
-│       ├── haptic-tab.tsx
-│       ├── icon-symbol.tsx
-│       ├── icon-symbol.ios.tsx
-│       ├── themed-text.tsx
-│       └── themed-view.tsx
-│
-├── config/                         # App security & configuration
-│   ├── security.ts
-│   └── securityEnhancements.ts
-│
-├── constants/                      # App-wide constants
-│   ├── products.ts
-│   ├── repairSteps.ts
-│   ├── services.ts
-│   └── theme.ts
-│
-├── context/                        # Global state management
-│   ├── AuthContext.tsx
-│   └── TechPhonoContext.tsx
-│
-├── hooks/                          # Custom React hooks
-│   ├── use-color-scheme.ts
-│   ├── use-color-scheme.web.ts
-│   ├── use-theme-color.ts
-│   └── useSecureStorage.ts
-│
-├── middleware/                     # App middleware
-│   ├── apiSecurity.ts
-│   └── securityMonitor.ts
-│
-├── scripts/                        # Utility scripts
-│   └── reset-project.js
-│
-├── services/                       # External services
-│   ├── supabaseClient.ts
-│   └── whatsapp.ts
-│
-├── types/                          # TypeScript types
-│   ├── cart.ts
-│   └── database.ts
-│
-├── utils/                          # Helper utilities
-│   ├── errorHandler.ts
-│   ├── sessionManager.ts
-│   ├── statusUtils.ts
-│   └── validation.ts
-│
-├── .env                            # Environment variables
-├── .env.local                      # Local environment variables
-├── .gitignore
-├── app.json                        # Expo configuration
-├── eas.json                        # EAS build config
-├── eslint.config.js
-├── expo-env.d.ts
-├── metro.config.js
-├── package.json
-├── package-lock.json
-├── tsconfig.json
-└── README.md
-```
 
-## 🔐 Authentication Flow
+## Screens And Routes
 
-### 📝 Registration
-- User signs up using email & password  
-- Supabase handles verification  
-- User metadata is stored securely  
-- Admin role is determined internally (email-based)  
+### Public and auth routes
 
-### 🔑 Login
-- Email + password authentication  
-- Session persists across app restarts  
-- Admin users are redirected to the admin dashboard  
+- `/` - startup redirect and splash handling
+- `/auth/login` - sign in
+- `/auth/register` - create account
+- `/auth/forgot-password` - password reset request
+- `/auth/callback` - Firebase action link callback handler
+- `/auth/reset-password` - password reset screen
 
-### 🔄 Forgot Password
-- User enters email  
-- Supabase sends password reset email  
-- Secure OTP-based reset flow  
+### Customer routes
 
----
+- `/(tabs)` - main user navigation
+- `/booking` - submit a repair request
+- `/track-repair` - track a repair by job ID
+- `/repair-history` - view previous repair requests
+- `/feedback` - submit repair feedback
 
-## 🛠️ Repair Booking Flow
-1. User submits a repair request  
-2. Status defaults to **Received**  
-3. Request appears instantly on admin dashboard  
-4. Admin updates repair stages:
-   - Received  
-   - Diagnosing  
-   - Repairing  
-   - Repaired  
-   - Completed  
-5. User sees real-time updates  
-6. Completed or cancelled requests move to history automatically  
+### Admin routes
 
----
+- `/admin` - dashboard
+- `/admin/repairs` - active repairs list
+- `/admin/history` - completed and cancelled repairs
+- `/admin/repair/[id]` - repair detail screen
+- `/admin/manage-items` - catalog items
+- `/admin/manage-services` - service catalog
 
-## 📊 Repair Status Management
-- Status updates are controlled only by admin  
-- Notes can be added per repair  
-- Users have read-only access to repair status  
-- Completed & cancelled requests are:
-  - Removed from active list  
-  - Added to history with proper labels  
+## Authentication Flow
 
----
+### Sign up
 
-## 🛍️ Services & Shop Items
+1. User enters name, email, password, and phone.
+2. Firebase Auth creates the account.
+3. User profile data is written to Firestore.
+4. The app marks the user session as active.
+5. The main app redirects based on the auth state.
 
-### 👨‍💼 Admin Capabilities
-- Add services  
-- Delete services  
-- Add shop items (image, price, description)  
-- Delete shop items  
+### Sign in
 
-### 👤 User Capabilities
-- View updated services  
-- Browse shop items  
-- Consistent UI for newly added items  
+1. User enters email and password.
+2. Firebase Auth validates credentials.
+3. Firebase persistence stores the session on device.
+4. The app routes the user to the correct area.
 
-> All changes reflect instantly on the user side.
+### Password reset
 
-# 📱 Real-Time Sync with Supabase
+1. User requests a reset email.
+2. Firebase sends an action link to the configured app URL.
+3. The callback route parses the `mode` and `oobCode` values.
+4. The reset screen confirms the code and updates the password.
 
-This project uses **Supabase subscriptions** to enable real-time data synchronization, ensuring a smooth and responsive user experience.
+## Repair Booking Flow
 
----
+1. Customer opens the booking screen.
+2. They select a service and describe the device problem.
+3. The app generates a job ID.
+4. A Firestore document is created in `repairs`.
+5. A WhatsApp message is built so the customer can share the booking quickly.
+6. The repair appears in the admin dashboard and tracking screens.
 
-## 🔄 Real-Time Sync
+## Real-Time Sync Behavior
 
-Supabase subscriptions ensure:
+The app uses Firestore listeners, not a polling loop, for live updates.
 
-- ⚡ Fast updates
-- 🔄 No manual refresh required
-- 👆 Pull-to-refresh for added reliability
+- Admin dashboards subscribe to `repairs` changes.
+- Repair tracking screens subscribe to the matching job ID.
+- Catalog screens refresh after Firestore mutations.
+- Closed jobs are filtered into history views automatically.
 
----
+## Security Model
 
-## ⚙️ Environment Setup
+### App-side checks
 
-### 📌 Required Environment Variables
+- `SecurityConfig.adminEmails` controls which accounts the UI treats as admins.
+- Environment values are read through `config/security.ts`.
+- Inputs are sanitized before being persisted or used in requests.
 
-Add your Supabase credentials to a `.env` file:
+### Firestore and Storage rules
+
+- Firestore rules require authenticated access for user data.
+- Privileged writes require the Firebase `admin` custom claim.
+- Storage rules allow public reads for item assets and user-scoped uploads for user directories.
+
+### Public-repo hygiene
+
+- `.env` is intentionally not committed.
+- Firebase CLI state and local build output are ignored.
+- Service account files should remain local-only if you use them for admin tooling.
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in the values for your Firebase project, Cloudinary account, and admin settings.
 
 ```env
-EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key_here
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=your_project_id_here
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id_here
+EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id_here
+
+EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name_here
+EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your_upload_preset_here
+
+EXPO_PUBLIC_ADMIN_EMAILS=admin@example.com,another-admin@example.com
+
+EXPO_PUBLIC_SESSION_TIMEOUT_MINUTES=60
+EXPO_PUBLIC_MAX_LOGIN_ATTEMPTS=5
+EXPO_PUBLIC_LOCKOUT_DURATION_MINUTES=15
+
+EXPO_PUBLIC_APP_NAME=TechPhono Repair App
+EXPO_PUBLIC_SUPPORT_EMAIL=support@techphono.com
+EXPO_PUBLIC_WHATSAPP_NUMBER=+1234567890
+
+EXPO_PUBLIC_DEV_MODE=false
+EXPO_PUBLIC_DEBUG_MODE=false
+EXPO_PUBLIC_APP_URL=https://your-domain.example
 ```
 
----
+## Firebase Setup
 
-## 📦 Installation
+1. Create a Firebase project.
+2. Enable Email/Password authentication.
+3. Register your Android and iOS app bundles in Firebase.
+4. Copy the Firebase web config values into `.env`.
+5. Create a Firestore database.
+6. Enable Firebase Storage.
+7. Deploy the committed Firestore and Storage rules.
+8. If you use admin-only writes, set the `admin` custom claim for privileged accounts.
+9. Configure the authorized action-link domain for password reset.
 
-Install all required dependencies:
+Related docs:
+
+- [Firebase setup guide](FIREBASE_SETUP.md)
+- [Dynamic links guide](docs/DYNAMIC_LINKS.md)
+
+## Cloudinary Setup
+
+The admin item screen uploads images directly to Cloudinary.
+
+1. Create a Cloudinary account.
+2. Create an unsigned upload preset.
+3. Add the cloud name and upload preset to `.env`.
+4. Test item creation in the admin panel.
+
+If Cloudinary is not configured, the item upload screen will fail fast with a clear error.
+
+## Cloud Functions
+
+The `functions/` folder contains Firebase Cloud Functions code for server-side tasks.
+
+Current function behavior:
+
+- Sync Auth users into Firestore user documents.
+- Keep verification metadata aligned with the authenticated user record.
+
+Build and deploy from the `functions/` folder when you need to update Cloud Functions:
+
+```bash
+cd functions
+npm install
+npm run build
+```
+
+Use the Firebase CLI to deploy functions, rules, and indexes when you are ready.
+
+## Installation
 
 ```bash
 npm install
 ```
 
----
-
-## ▶️ Running the App
-
-Start the Expo development server:
+If you are setting up Firebase Functions as well:
 
 ```bash
-npx expo start
+cd functions
+npm install
 ```
 
-### 📲 Testing Options
+## Running The App
 
-- Use **Expo Go** for testing
-- Recommended modes:
-  - **Tunnel**
-  - **LAN**
-- 🌐 Web build is supported, but **mobile is the primary platform**
-
----
-
-## 🧪 Common Issues & Fixes
-
-### ⏳ App Stuck on Loading
-
-**Fix:**
+### Start the dev server
 
 ```bash
-npx expo start -c
+npm start
 ```
 
-- Check Supabase environment variables
-- Ensure `.env` file is correctly loaded
+### Android
 
----
+```bash
+npm run android
+```
 
-### 🔐 Admin Page Not Opening
+### iOS
 
-**Fix:**
+```bash
+npm run ios
+```
 
-- Ensure admin email matches the configured email
-- Verify session logic inside `AuthContext`
+### Web
 
----
+```bash
+npm run web
+```
 
-### 🔁 Requests Not Syncing
+## Code Quality Checks
 
-**Fix:**
+```bash
+npm run lint
+npm run typecheck
+```
 
-- Ensure **Supabase Realtime** is enabled
-- Verify **Row Level Security (RLS)** policies
-- Check subscription listeners
+These checks are useful before pushing to GitHub or preparing a release build.
 
----
+## Deployment Notes
 
-## 🚀 Future Enhancements
+### Expo / mobile builds
 
-- 🔔 Push notifications for status updates
-- 💳 Payment integration
-- 🧑‍🔧 Technician role support
-- 💰 Repair cost estimation
-- 👥 Multi-admin support
-- 📊 Analytics dashboard
+- Use EAS builds for store-ready Android and iOS binaries.
+- Keep environment variables in the appropriate build profile.
+- Verify that Firebase configuration is present in the build environment.
 
----
+### Firebase deployment
 
-## 📄 License
+- Deploy Firestore rules and indexes.
+- Deploy Storage rules.
+- Deploy Cloud Functions after building the `functions/` project.
 
-This project is intended for **educational and demonstration purposes only**.
+### Public release checklist
+
+- Confirm no `.env` file is committed.
+- Confirm Firebase keys are only in environment config.
+- Confirm no service account JSON files are tracked.
+- Confirm `firebase-debug.log`, `.firebase/`, and Functions build output remain ignored.
+
+## Troubleshooting
+
+### App stays on the splash screen
+
+- Run `npm start -c` to clear the Expo cache.
+- Confirm Firebase environment variables are present.
+- Make sure the app can initialize Firebase without falling back to demo config.
+
+### Login or registration fails
+
+- Confirm Email/Password sign-in is enabled in Firebase Auth.
+- Verify the Firebase project ID and API key in `.env`.
+- Check the console for `auth/...` error codes.
+
+### Password reset email does not open the app
+
+- Make sure `EXPO_PUBLIC_APP_URL` matches the authorized action-link domain.
+- Confirm the callback route is reachable in the app.
+- Verify the reset code is being passed through the callback correctly.
+
+### Admin screens do not open
+
+- Confirm the account email is included in `EXPO_PUBLIC_ADMIN_EMAILS`.
+- Confirm the account has the `admin` custom claim if the Firestore rule requires it.
+- Check that the user is authenticated before navigating to the admin route.
+
+### Item image upload fails
+
+- Confirm Cloudinary cloud name and upload preset are set.
+- Confirm the upload preset allows the client upload flow you configured.
+
+### Real-time updates are not appearing
+
+- Confirm the device is online.
+- Make sure Firestore listeners are allowed by the current security rules.
+- Check that the repair document status is being updated in the same collection the app reads.
+
+## Key Documentation
+
+- [Responsive refactoring guide](RESPONSIVE_REFACTORING_GUIDE.md)
+- [Responsive quick reference](RESPONSIVE_QUICK_REFERENCE.md)
+- [Responsive refactoring summary](RESPONSIVE_REFACTORING_SUMMARY.md)
+- [Implementation status](IMPLEMENTATION_STATUS.md)
+- [Migration report](MIGRATION_REPORT.md)
+
+## Security Reminders
+
+- Never commit `.env` or service account credentials.
+- Keep Cloudinary upload settings limited to the minimal required permissions.
+- Review Firestore and Storage rules before a public release.
+- Treat any local admin tooling as sensitive if it touches privileged Firebase actions.
+
+## License
+
+No license file is included in the repository. Add one before public redistribution if you want to define reuse terms.

@@ -7,9 +7,21 @@ import {
   ShoppingCart,
   Wrench,
 } from 'lucide-react-native';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
 export default function TabsLayout() {
+  const router = useRouter();
+  const { isAdmin } = useAuth();
+
+  useEffect(() => {
+    if (isAdmin) {
+      // If an admin somehow opens the user tabs, send them to admin dashboard
+      router.replace('/admin');
+    }
+  }, [isAdmin]);
+
   return (
     <Tabs
       screenOptions={{

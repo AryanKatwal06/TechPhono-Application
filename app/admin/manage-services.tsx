@@ -1,4 +1,5 @@
-import { supabase } from '@/services/supabaseClient';
+import { db } from '@/services/firebaseClient';
+import { collection, addDoc, getDocs, updateDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { Stack, useRouter } from 'expo-router';
 import { ArrowLeft, Trash2, Plus, Edit2, X, Check } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
@@ -31,7 +32,7 @@ export default function ManageServices() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Form State
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
@@ -44,16 +45,27 @@ export default function ManageServices() {
 
   async function fetchServices() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('services')
-      .select('*')
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const snapshot = await getDocs(collection(db, 'services'));
+      const data = snapshot.docs
+        .map(d => {
+        const docData = d.data();
+        return {
+          id: d.id,
+          name: docData.name,
+          description: docData.description,
+          price: docData.price,
+          is_deleted: docData.is_deleted,
+          created_at: docData.created_at instanceof Timestamp
+            ? docData.created_at.toDate().toISOString()
+            : docData.created_at || new Date().toISOString(),
+        } as Service;
+      })
+        .filter(service => !service.is_deleted)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setServices(data);
+    } catch (error: any) {
       Alert.alert('Error', error.message);
-    } else {
-      setServices(data || []);
     }
     setLoading(false);
   }
@@ -64,7 +76,7 @@ export default function ManageServices() {
     setRefreshing(false);
   }, []);
 
-  // 🔸 ADD / UPDATE SERVICE
+  // ADD / UPDATE SERVICE
   async function saveService() {
     if (!name || !desc || !price) {
       Alert.alert('Missing fields', 'Please fill all fields');
@@ -79,31 +91,31 @@ export default function ManageServices() {
       is_deleted: false
     };
 
-    let error;
-    if (editingId) {
-      // Update existing
-      const result = await supabase
-        .from('services')
-        .update(serviceData)
-        .eq('id', editingId);
-      error = result.error;
-    } else {
-      // Insert new
-      const result = await supabase.from('services').insert(serviceData);
-      error = result.error;
-    }
+    try {
+      if (editingId) {
+        // Update existing
+        await updateDoc(doc(db, 'services', editingId), {
+          ...serviceData,
+          updated_at: serverTimestamp()
+        });
+      } else {
+        // Insert new
+        await addDoc(collection(db, 'services'), {
+          ...serviceData,
+          created_at: serverTimestamp()
+        });
+      }
 
-    if (error) {
-      Alert.alert('Error', error.message);
-    } else {
       if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       resetForm();
       fetchServices();
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
     }
     setLoading(false);
   }
 
-  // 🔸 DELETE SERVICE (SOFT DELETE)
+  // DELETE SERVICE (SOFT DELETE)
   async function deleteService(id: string) {
     Alert.alert('Delete Service', 'Are you sure? This will hide the service from users.', [
       { text: 'Cancel', style: 'cancel' },
@@ -111,15 +123,11 @@ export default function ManageServices() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          const { error } = await supabase
-            .from('services')
-            .update({ is_deleted: true }) 
-            .eq('id', id);
-          
-          if (error) {
-            Alert.alert('Error', error.message);
-          } else {
+          try {
+            await updateDoc(doc(db, 'services', id), { is_deleted: true });
             fetchServices();
+          } catch (error: any) {
+            Alert.alert('Error', error.message);
           }
         },
       },
@@ -159,12 +167,12 @@ export default function ManageServices() {
   );
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       <Stack.Screen options={{ headerShown: false }} />
-      
+
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <ArrowLeft size={24} color="#000" />
@@ -174,46 +182,46 @@ export default function ManageServices() {
 
       <View style={[styles.formCard, editingId && styles.formCardEdit]}>
         <View style={styles.formHeader}>
-            <Text style={styles.formTitle}>{editingId ? 'Edit Service' : 'Add New Service'}</Text>
-            {editingId && (
-                <TouchableOpacity onPress={resetForm}>
-                    <X size={20} color="#666" />
-                </TouchableOpacity>
-            )}
+          <Text style={styles.formTitle}>{editingId ? 'Edit Service' : 'Add New Service'}</Text>
+          {editingId && (
+            <TouchableOpacity onPress={resetForm}>
+              <X size={20} color="#666" />
+            </TouchableOpacity>
+          )}
         </View>
-        
-        <TextInput 
-          placeholder="Service name (e.g. Screen Replacement)" 
-          value={name} 
-          onChangeText={setName} 
-          style={styles.input} 
+
+        <TextInput
+          placeholder="Service name (e.g. Screen Replacement)"
+          value={name}
+          onChangeText={setName}
+          style={styles.input}
         />
-        <TextInput 
-          placeholder="One-line description" 
-          value={desc} 
-          onChangeText={setDesc} 
-          style={styles.input} 
+        <TextInput
+          placeholder="One-line description"
+          value={desc}
+          onChangeText={setDesc}
+          style={styles.input}
         />
-        <TextInput 
-          placeholder="Price (₹)" 
-          value={price} 
-          onChangeText={setPrice} 
-          keyboardType="numeric" 
-          style={styles.input} 
+        <TextInput
+          placeholder="Price (₹)"
+          value={price}
+          onChangeText={setPrice}
+          keyboardType="numeric"
+          style={styles.input}
         />
-        
-        <TouchableOpacity 
-          onPress={saveService} 
+
+        <TouchableOpacity
+          onPress={saveService}
           style={[styles.primaryBtn, editingId && { backgroundColor: '#059669' }]}
           disabled={loading}
         >
           {loading ? (
-             <ActivityIndicator color="#fff" size="small" />
+            <ActivityIndicator color="#fff" size="small" />
           ) : (
-             <View style={styles.btnContent}>
-                {editingId ? <Check size={18} color="#fff" /> : <Plus size={18} color="#fff" />}
-                <Text style={styles.btnText}>{editingId ? 'Update Service' : 'Add Service'}</Text>
-             </View>
+            <View style={styles.btnContent}>
+              {editingId ? <Check size={18} color="#fff" /> : <Plus size={18} color="#fff" />}
+              <Text style={styles.btnText}>{editingId ? 'Update Service' : 'Add Service'}</Text>
+            </View>
           )}
         </TouchableOpacity>
       </View>

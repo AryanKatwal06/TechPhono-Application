@@ -3,16 +3,16 @@
     "name": "TechPhono",
     "slug": "TechPhono",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "sensor",
     "icon": "./assets/logo.png",
     "scheme": "techphono",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "updates": {
       "enabled": false
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "com.techphono.repair",
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to camera to take photos for items",
@@ -25,6 +25,7 @@
       "icon": "./assets/logo.png",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
+      "screenOrientation": "sensor",
       "permissions": [
         "android.permission.VIBRATE",
         "android.permission.CAMERA",
@@ -47,7 +48,7 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": false
     },
     "extra": {
       "eas": {

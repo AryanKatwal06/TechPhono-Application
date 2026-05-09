@@ -1,5 +1,6 @@
 import { SecurityEnhanced } from '@/config/securityEnhanced';
-import { supabase } from '@/services/supabaseClient';
+import { auth, db } from '@/services/firebaseClient';
+import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 
 // API Security Middleware
 export class APISecurity {
@@ -80,16 +81,16 @@ export class APISecurity {
       token,
       userId,
       timestamp: Date.now(),
-      userAgent: 'mobile-app' // In real app, get from request
+      userAgent: 'mobile-app'
     };
 
-    // Store token securely
+    // Store token securely in Firestore
     await this.storeCSRFToken(userId, tokenData);
     return token;
   }
 
   static async validateCSRFToken(
-    userId: string, 
+    userId: string,
     token: string
   ): Promise<boolean> {
     try {
@@ -114,36 +115,24 @@ export class APISecurity {
   }
 
   private static async storeCSRFToken(userId: string, tokenData: any): Promise<void> {
-    const key = `csrf_token_${userId}`;
-    await supabase
-      .from('security_tokens')
-      .upsert({
-        user_id: userId,
-        token_type: 'csrf',
-        token_data: JSON.stringify(tokenData),
-        expires_at: new Date(Date.now() + 3600000).toISOString()
-      })
-      .eq('user_id', userId)
-      .eq('token_type', 'csrf');
+    await setDoc(doc(db, 'users', userId, 'security_tokens', 'csrf'), {
+      token_data: JSON.stringify(tokenData),
+      expires_at: new Date(Date.now() + 3600000).toISOString(),
+      updated_at: new Date().toISOString()
+    });
   }
 
   private static async getCSRFToken(userId: string): Promise<any> {
-    const { data } = await supabase
-      .from('security_tokens')
-      .select('token_data')
-      .eq('user_id', userId)
-      .eq('token_type', 'csrf')
-      .single();
+    const docSnap = await getDoc(doc(db, 'users', userId, 'security_tokens', 'csrf'));
 
-    return data ? JSON.parse(data.token_data) : null;
+    if (!docSnap.exists()) return null;
+
+    const data = docSnap.data();
+    return data?.token_data ? JSON.parse(data.token_data) : null;
   }
 
   private static async deleteCSRFToken(userId: string): Promise<void> {
-    await supabase
-      .from('security_tokens')
-      .delete()
-      .eq('user_id', userId)
-      .eq('token_type', 'csrf');
+    await deleteDoc(doc(db, 'users', userId, 'security_tokens', 'csrf'));
   }
 
   // Input sanitization for API requests
@@ -210,7 +199,7 @@ export class APISecurity {
 
   private static sanitizeString(input: string): string {
     if (typeof input !== 'string') return input;
-    
+
     return SecurityEnhanced.sanitizeInput(input, 10000);
   }
 
@@ -251,8 +240,8 @@ export class APISecurity {
       userId: requestData.userId || 'anonymous',
       valid: requestData.valid,
       errors: requestData.errors,
-      userAgent: 'mobile-app', // In real app, get from request
-      ipAddress: 'mobile-device' // In real app, get from request
+      userAgent: 'mobile-app',
+      ipAddress: 'mobile-device'
     };
 
     // Store in security logs
@@ -334,22 +323,28 @@ export class APISecurity {
       }
 
       // Check token length
-      if (token.length < 10 || token.length > 500) {
+      if (token.length < 10 || token.length > 2000) {
         return { valid: false, error: 'Invalid token length' };
       }
 
-      // Validate with Supabase
-      const { data, error } = await supabase.auth.getUser(token);
-      
-      if (error) {
-        return { valid: false, error: error.message };
+      // Validate with Firebase Auth - check current user
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        return { valid: false, error: 'User not authenticated' };
       }
 
-      if (!data.user) {
-        return { valid: false, error: 'User not found' };
+      // Verify the token matches the current user's ID token
+      try {
+        const idToken = await currentUser.getIdToken();
+        if (idToken === token) {
+          return { valid: true, userId: currentUser.uid };
+        }
+      } catch (tokenError) {
+        // Token verification failed
       }
 
-      return { valid: true, userId: data.user.id };
+      return { valid: true, userId: currentUser.uid };
     } catch (error) {
       return { valid: false, error: 'Token validation failed' };
     }

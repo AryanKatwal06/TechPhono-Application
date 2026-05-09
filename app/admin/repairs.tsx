@@ -1,5 +1,11 @@
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
-import { supabase } from '@/services/supabaseClient';
+import { db } from '@/services/firebaseClient';
+import {
+  collection,
+  getDocs,
+  onSnapshot,
+  Timestamp,
+} from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -14,7 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { createStatusFilter, getActiveStatuses, isActiveStatus, formatStatusForDisplay } from '@/utils/statusUtils';
+import { isActiveStatus, formatStatusForDisplay } from '@/utils/statusUtils';
 
 export default function RepairsList() {
   const router = useRouter();
@@ -22,56 +28,44 @@ export default function RepairsList() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const sortByNewest = (items: any[]) =>
+    items.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  const isActiveRepair = (item: any) => {
+    return isActiveStatus(item?.status) && item?.is_deleted !== true;
+  };
+
   const fetchActiveRepairs = async () => {
     try {
-      if (!supabase) throw new Error('Supabase not initialized');
       console.log('🔍 Fetching active repairs for admin...');
-      
-      // Use case-insensitive status filter
-      const activeStatuses = createStatusFilter(getActiveStatuses());
-      const { data, error } = await supabase
-        .from('repairs')
-        .select('*')
-        .in('status', activeStatuses)
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('❌ Error fetching active repairs:', error);
-        throw error;
-      }
-      
-      console.log(`✅ Fetched ${data?.length || 0} active repairs`);
-      
-      // Debug: Log details of fetched repairs
-      if (data && data.length > 0) {
-        console.log('🔍 Active repairs details:', data.map(r => ({
+
+      const snapshot = await getDocs(collection(db, 'repairs'));
+      const data = snapshot.docs
+        .map(d => {
+        const docData = d.data();
+        return {
+          id: d.id,
+          ...docData,
+          created_at: docData.created_at instanceof Timestamp
+            ? docData.created_at.toDate().toISOString()
+            : docData.created_at || new Date().toISOString(),
+        };
+        })
+        .filter(isActiveRepair);
+
+      console.log(`✅ Fetched ${data.length} active repairs`);
+      sortByNewest(data);
+
+      if (data.length > 0) {
+        console.log('🔍 Active repairs details:', data.map((r: any) => ({
           job_id: r.job_id,
           name: r.name,
           status: r.status,
           is_deleted: r.is_deleted
         })));
       }
-      
-      // Check for any repairs that might be missing using case-insensitive check
-      const { data: allRecentRepairs, error: allError } = await supabase
-        .from('repairs')
-        .select('job_id, name, status, is_deleted')
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      if (!allError && allRecentRepairs) {
-        console.log('🔍 All recent repairs for comparison:', allRecentRepairs);
-        const missingFromActive = allRecentRepairs.filter(r => 
-          !isActiveStatus(r.status)
-        );
-        if (missingFromActive.length > 0) {
-          console.warn('⚠️ Repairs not showing in active list due to status:', missingFromActive);
-        }
-      }
-      
-      setRepairs(data || []);
+
+      setRepairs(data);
     } catch (error: any) {
       console.error('❌ Admin fetch error:', error);
       Alert.alert('Error', 'Failed to fetch repair requests: ' + error.message);
@@ -88,18 +82,28 @@ export default function RepairsList() {
   );
 
   useEffect(() => {
-    const channel = supabase
-      .channel('admin-active-repairs')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'repairs' },
-        () => {
-          fetchActiveRepairs();
-        }
-      )
-      .subscribe();
+    // Real-time listener for repairs changes
+    const unsubscribe = onSnapshot(collection(db, 'repairs'), (snapshot) => {
+      const data = snapshot.docs
+        .map(d => {
+        const docData = d.data();
+        return {
+          id: d.id,
+          ...docData,
+          created_at: docData.created_at instanceof Timestamp
+            ? docData.created_at.toDate().toISOString()
+            : docData.created_at || new Date().toISOString(),
+        };
+        })
+        .filter(isActiveRepair);
+      // Sort by created_at desc
+      sortByNewest(data);
+      setRepairs(data);
+      setLoading(false);
+    });
+
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, []);
 
@@ -169,8 +173,8 @@ export default function RepairsList() {
           </TouchableOpacity>
           <Text style={styles.title}>Active Repairs</Text>
         </View>
-        <TouchableOpacity 
-          style={styles.historyButton} 
+        <TouchableOpacity
+          style={styles.historyButton}
           onPress={() => router.push('/admin/history' as any)}
         >
           <Ionicons name="time-outline" size={20} color={colors.primary} />
@@ -203,116 +207,23 @@ export default function RepairsList() {
   );
 }
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: spacing.lg,
-    paddingTop: 60,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xl,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  historyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: borderRadius.md,
-    gap: 6,
-    ...shadows.sm,
-  },
-  historyText: {
-    color: colors.primary,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    marginTop: -40,
-  },
-  emptyTitle: {
-    marginTop: spacing.md,
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  emptyText: {
-    marginTop: spacing.sm,
-    textAlign: 'center',
-    color: colors.textSecondary,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadows.sm,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  jobId: {
-    fontWeight: '700',
-    fontSize: 16,
-    color: colors.primary,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: borderRadius.sm,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  deviceName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  metaText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    flex: 1,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  date: {
-    fontSize: 11,
-    color: colors.textLight,
-  },
+  container: { flex: 1, backgroundColor: colors.background, padding: spacing.lg, paddingTop: 60 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xl },
+  title: { fontSize: 20, fontWeight: '700', color: colors.text },
+  historyButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, paddingHorizontal: 12, paddingVertical: 8, borderRadius: borderRadius.md, gap: 6, ...shadows.sm },
+  historyText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl, marginTop: -40 },
+  emptyTitle: { marginTop: spacing.md, fontSize: 18, fontWeight: '600', color: colors.text },
+  emptyText: { marginTop: spacing.sm, textAlign: 'center', color: colors.textSecondary },
+  card: { backgroundColor: colors.card, borderRadius: borderRadius.lg, padding: spacing.md, marginBottom: spacing.md, ...shadows.sm },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  jobId: { fontWeight: '700', fontSize: 16, color: colors.primary },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: borderRadius.sm },
+  statusText: { fontSize: 12, fontWeight: '600' },
+  deviceName: { fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: spacing.sm },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  metaText: { fontSize: 13, color: colors.textSecondary, flex: 1 },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
+  date: { fontSize: 11, color: colors.textLight },
 });

@@ -50,6 +50,7 @@ export const spacing = {
   lg: 24,
   xl: 32,
   xxl: 48,
+  xxxl: 60,
 };
 export const borderRadius = {
   xs: 6,
@@ -57,6 +58,8 @@ export const borderRadius = {
   md: 14,
   lg: 18,
   xl: 28,
+  xxl: 40,
+  xxxl: 60,
   pill: 999,
 };
 export const shadows = {
@@ -80,6 +83,13 @@ export const shadows = {
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 8,
+  },
+  xl: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 12,
   },
 };
 export const motion = {

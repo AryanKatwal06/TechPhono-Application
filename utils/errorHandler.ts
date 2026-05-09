@@ -42,64 +42,64 @@ export class ErrorHandler {
   // Categorize errors based on error messages and types
   static categorizeError(error: any): ErrorCategory {
     const message = error?.message?.toLowerCase() || '';
-    
-    if (message.includes('network') || message.includes('connection') || 
-        message.includes('timeout') || message.includes('fetch')) {
+
+    if (message.includes('network') || message.includes('connection') ||
+      message.includes('timeout') || message.includes('fetch')) {
       return ErrorCategories.NETWORK;
     }
-    
-    if (message.includes('auth') || message.includes('login') || 
-        message.includes('password') || message.includes('unauthorized')) {
+
+    if (message.includes('auth') || message.includes('login') ||
+      message.includes('password') || message.includes('unauthorized')) {
       return ErrorCategories.AUTHENTICATION;
     }
-    
-    if (message.includes('validation') || message.includes('invalid') || 
-        message.includes('required') || message.includes('format')) {
+
+    if (message.includes('validation') || message.includes('invalid') ||
+      message.includes('required') || message.includes('format')) {
       return ErrorCategories.VALIDATION;
     }
-    
-    if (message.includes('database') || message.includes('supabase') || 
-        message.includes('query') || message.includes('constraint')) {
+
+    if (message.includes('database') || message.includes('firestore') ||
+      message.includes('firebase') || message.includes('query') || message.includes('constraint')) {
       return ErrorCategories.DATABASE;
     }
-    
-    if (message.includes('permission') || message.includes('forbidden') || 
-        message.includes('access') || message.includes('role')) {
+
+    if (message.includes('permission') || message.includes('forbidden') ||
+      message.includes('access') || message.includes('role')) {
       return ErrorCategories.PERMISSION;
     }
-    
-    if (message.includes('user') || message.includes('input') || 
-        message.includes('form') || message.includes('field')) {
+
+    if (message.includes('user') || message.includes('input') ||
+      message.includes('form') || message.includes('field')) {
       return ErrorCategories.USER_INPUT;
     }
-    
+
     return ErrorCategories.SYSTEM;
   }
 
   // Determine error severity
   static determineSeverity(error: any, category: ErrorCategory): ErrorSeverity {
     const message = error?.message?.toLowerCase() || '';
-    
+
     // Critical errors
-    if (message.includes('critical') || message.includes('fatal') || 
-        message.includes('security') || message.includes('breach')) {
+    if (message.includes('critical') || message.includes('fatal') ||
+      message.includes('security') || message.includes('breach')) {
       return ErrorSeverity.CRITICAL;
     }
-    
+
     // High severity errors
-    if (category === ErrorCategories.AUTHENTICATION || 
-        category === ErrorCategories.PERMISSION ||
-        message.includes('error') || message.includes('failed')) {
+    if (category === ErrorCategories.AUTHENTICATION ||
+      category === ErrorCategories.PERMISSION ||
+      message.includes('error') || message.includes('failed')) {
       return ErrorSeverity.HIGH;
     }
-    
+
     // Medium severity errors
-    if (category === ErrorCategories.DATABASE || 
-        category === ErrorCategories.NETWORK ||
-        message.includes('warning') || message.includes('timeout')) {
+    if (category === ErrorCategories.DATABASE ||
+      category === ErrorCategories.NETWORK ||
+      message.includes('warning') || message.includes('timeout')) {
       return ErrorSeverity.MEDIUM;
     }
-    
+
     // Low severity errors
     return ErrorSeverity.LOW;
   }
@@ -107,11 +107,11 @@ export class ErrorHandler {
   // Create user-friendly error messages
   static getUserFriendlyMessage(error: any, category: ErrorCategory): string {
     const message = error?.message || '';
-    
+
     switch (category) {
       case ErrorCategories.NETWORK:
         return 'Network connection issue. Please check your internet connection and try again.';
-      
+
       case ErrorCategories.AUTHENTICATION:
         if (message.includes('invalid credentials')) {
           return 'Invalid email or password. Please try again.';
@@ -120,7 +120,7 @@ export class ErrorHandler {
           return 'Account temporarily locked due to multiple failed attempts. Please try again later.';
         }
         return 'Authentication failed. Please check your credentials and try again.';
-      
+
       case ErrorCategories.VALIDATION:
         if (message.includes('email')) {
           return 'Please enter a valid email address.';
@@ -129,16 +129,16 @@ export class ErrorHandler {
           return 'Password does not meet the security requirements.';
         }
         return 'Please check your input and try again.';
-      
+
       case ErrorCategories.DATABASE:
         return 'A database error occurred. Please try again later.';
-      
+
       case ErrorCategories.PERMISSION:
         return 'You don\'t have permission to perform this action.';
-      
+
       case ErrorCategories.USER_INPUT:
         return 'Please check the form fields and correct any errors.';
-      
+
       default:
         return 'An unexpected error occurred. Please try again.';
     }
@@ -153,7 +153,7 @@ export class ErrorHandler {
     try {
       const category = this.categorizeError(error);
       const severity = this.determineSeverity(error, category);
-      
+
       const errorLog: ErrorLog = {
         id: this.generateErrorId(),
         timestamp: Date.now(),
@@ -206,7 +206,7 @@ export class ErrorHandler {
     try {
       const logsData = await AsyncStorage.getItem(this.ERROR_LOG_KEY);
       const logs: ErrorLog[] = logsData ? JSON.parse(logsData) : [];
-      
+
       return logs
         .sort((a: any, b: any) => b.timestamp - a.timestamp)
         .slice(0, limit);

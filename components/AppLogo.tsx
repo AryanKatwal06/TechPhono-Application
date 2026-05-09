@@ -6,7 +6,7 @@ export default function AppLogo({ size = 120 }: Props) {
   return (
     <View style={styles.container}>
       <Image
-        source={require('@/assets/logo.png')}
+        source={require('../assets/logo.png')}
         style={{ width: size, height: size }}
         resizeMode="contain"
       />
