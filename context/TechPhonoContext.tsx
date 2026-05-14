@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Crypto from 'expo-crypto';
 import React, {
     createContext,
     ReactNode,
@@ -9,8 +8,9 @@ import React, {
     useMemo,
     useState,
 } from 'react';
-import { Alert, Linking } from 'react-native';
+import { Linking } from 'react-native';
 import { SecurityConfig } from '@/config/security';
+import { createRandomId } from '@/utils/nativeCrypto';
 import { db } from '@/services/firebaseClient';
 import {
     collection,
@@ -52,7 +52,7 @@ const sendRepairToWhatsApp = (data: {
     `.trim();
     const url = `https://wa.me/${adminNumber}?text=${encodeURIComponent(message)}`;
     Linking.openURL(url).catch(() =>
-        Alert.alert('Error', 'WhatsApp not installed')
+        console.warn('WhatsApp not installed')
     );
 };
 
@@ -201,7 +201,7 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
         cart.reduce((count, item) => count + item.quantity, 0);
 
     const generateJobId = () =>
-        Crypto.randomUUID().split('-')[0].toUpperCase();
+        createRandomId().slice(0, 8);
 
     const createRepair = async (data: {
         name: string;

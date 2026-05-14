@@ -105,7 +105,7 @@ export default function SplashScreen() {
         <View style={styles.logoWrapper}>
           {!imageError ? (
             <Image
-              source={require('../assets/logo.png')}
+              source={require('../assets/images/splash-icon.png')}
               style={styles.logo}
               resizeMode="contain"
               onError={() => {

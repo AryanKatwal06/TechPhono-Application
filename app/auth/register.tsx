@@ -1,13 +1,12 @@
 import AppLogo from '@/components/AppLogo';
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+import { useAlert } from '@/context/AlertContext';
+import { Haptics } from '@/utils/haptics';
+import { useRouter } from '@/navigation/router';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   BackHandler,
   KeyboardAvoidingView,
@@ -22,7 +21,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import AuthFeedback from '@/components/AuthFeedback';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from 'react-native-linear-gradient';
 
 // Responsive values
 const getResponsiveValues = () => {
@@ -56,7 +55,8 @@ const getResponsiveValues = () => {
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { signUp } = useAuth();
+  const { signUp, signIn } = useAuth();
+  const alert = useAlert();
   const { isTablet, isDesktop, spacing_val, typography_val } = getResponsiveValues();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -114,12 +114,12 @@ export default function RegisterScreen() {
   };
   const handleRegister = async () => {
     if (!name || !email || !password || !phone) {
-      Alert.alert('Error', 'All fields are required');
+      alert.error('Error', 'All fields are required');
       setError('All fields are required');
       return;
     }
     if (phone.length < 10) {
-      Alert.alert('Error', 'Please enter a valid 10-digit phone number');
+      alert.error('Error', 'Please enter a valid 10-digit phone number');
       setError('Invalid phone number');
       return;
     }
@@ -132,7 +132,7 @@ export default function RegisterScreen() {
       const res = await signUp(email.trim(), password, phone.trim(), name.trim());
       if (!res.success) {
         const errorMsg = res.error || 'Signup failed';
-        Alert.alert('Signup failed', errorMsg);
+        alert.error('Signup failed', errorMsg);
         setError(errorMsg);
         if (Platform.OS !== 'web') {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -147,20 +147,23 @@ export default function RegisterScreen() {
       const autoLoginError = await signIn(email.trim(), password);
       if (autoLoginError) {
         // If auto-login fails, show error but redirect to login
-        Alert.alert('Account Created', 'Your account was created successfully. Please login to continue.', [
-          { text: 'OK', onPress: () => router.replace('/auth/login') }
-        ]);
+        alert.show({
+          title: 'Account Created',
+          message: 'Your account was created successfully. Please login to continue.',
+          type: 'success',
+          buttons: [
+            { text: 'OK', onPress: () => router.replace('/auth/login'), style: 'primary' }
+          ],
+        });
         return;
       }
       
       // Auto-login successful - user will be logged in and redirected by the app's auth state listener
-      Alert.alert('Success', 'Account created and you are now logged in!', [
-        { text: 'OK' }
-      ]);
+      alert.success('Success', 'Account created and you are now logged in!');
     } catch (err: any) {
       const msg = err.message || 'Registration failed';
       setError(msg);
-      Alert.alert('Registration Failed', msg);
+      alert.error('Registration Failed', msg);
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
@@ -267,11 +270,11 @@ export default function RegisterScreen() {
                         onPress={() => setPasswordVisible(!passwordVisible)}
                         style={[styles.eyeButton, { padding: spacing_val.sm }]}
                       >
-                        <Ionicons
-                          name={passwordVisible ? 'eye-off' : 'eye'}
-                          size={22}
-                          color={colors.textSecondary}
-                        />
+                        {passwordVisible ? (
+                          <EyeOff size={22} color={colors.textSecondary} />
+                        ) : (
+                          <Eye size={22} color={colors.textSecondary} />
+                        )}
                       </TouchableOpacity>
                     </View>
 

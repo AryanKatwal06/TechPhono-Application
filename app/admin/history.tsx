@@ -8,12 +8,11 @@ import {
   onSnapshot,
   Timestamp,
 } from 'firebase/firestore';
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { ArrowLeft, Archive, CheckCircle2, ChevronRight, Clock3, TriangleAlert, UserRound } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from '@/navigation/router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -21,10 +20,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useAlert } from '@/context/AlertContext';
 import { formatStatusForDisplay } from '@/utils/statusUtils';
 
 export default function RepairHistoryAdmin() {
   const router = useRouter();
+  const alert = useAlert();
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,7 +62,7 @@ export default function RepairHistoryAdmin() {
       setHistory(data);
     } catch (error: any) {
       console.error('❌ History fetch error:', error);
-      Alert.alert('Error', 'Failed to fetch repair history: ' + error.message);
+      alert.error('Error', 'Failed to fetch repair history: ' + error.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -104,24 +105,17 @@ export default function RepairHistoryAdmin() {
   };
 
   const handleArchive = async (id: string) => {
-    Alert.alert(
+    alert.confirm(
       'Archive Record',
       'Are you sure you want to remove this from the history view?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Archive',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await updateDoc(doc(db, 'repairs', id), { is_deleted: true });
-              setHistory((prev) => prev.filter((item) => item.id !== id));
-            } catch {
-              Alert.alert('Error', 'Failed to archive record.');
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          await updateDoc(doc(db, 'repairs', id), { is_deleted: true });
+          setHistory((prev) => prev.filter((item) => item.id !== id));
+        } catch {
+          alert.error('Error', 'Failed to archive record.');
+        }
+      }
     );
   };
 
@@ -148,11 +142,11 @@ export default function RepairHistoryAdmin() {
         {item.device_type} {item.model ? `• ${item.model}` : ''}
       </Text>
       <View style={styles.row}>
-        <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
+        <UserRound size={14} color={colors.textSecondary} />
         <Text style={styles.metaText}>{item.name} • {item.phone}</Text>
       </View>
       <View style={styles.row}>
-        <Ionicons name="alert-circle-outline" size={14} color={colors.textSecondary} />
+        <TriangleAlert size={14} color={colors.textSecondary} />
         <Text style={styles.metaText} numberOfLines={1}>{item.issue}</Text>
       </View>
       <View style={styles.footer}>
@@ -160,7 +154,7 @@ export default function RepairHistoryAdmin() {
           Created: {new Date(item.created_at).toLocaleDateString()}
         </Text>
         <TouchableOpacity onPress={() => handleArchive(item.id)} style={styles.archiveBtn}>
-          <Ionicons name="archive-outline" size={16} color={colors.textSecondary} />
+          <Archive size={16} color={colors.textSecondary} />
           <Text style={styles.archiveText}>Archive</Text>
         </TouchableOpacity>
       </View>
@@ -170,7 +164,7 @@ export default function RepairHistoryAdmin() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Repair History</Text>
       </View>
@@ -180,7 +174,7 @@ export default function RepairHistoryAdmin() {
         </View>
       ) : history.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="checkmark-done-circle-outline" size={64} color={colors.textLight} />
+          <CheckCircle2 size={64} color={colors.textLight} />
           <Text style={styles.emptyTitle}>No History</Text>
           <Text style={styles.emptyText}>Completed or Cancelled repairs will appear here.</Text>
         </View>

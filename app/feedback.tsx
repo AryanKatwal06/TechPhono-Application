@@ -1,12 +1,12 @@
 import { RatingStars } from '@/components/RatingStars';
 import { colors } from '@/constants/theme';
 import { useTechPhono } from '@/context/TechPhonoContext';
-import * as Haptics from 'expo-haptics';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useAlert } from '@/context/AlertContext';
+import { Haptics } from '@/utils/haptics';
+import { Stack, useLocalSearchParams, useRouter } from '@/navigation/router';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-    Alert,
     Platform,
     ScrollView,
     StyleSheet,
@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 export default function FeedbackScreen() {
   const router = useRouter();
+  const alert = useAlert();
   const { repairId } = useLocalSearchParams<{ repairId?: string }>();
   const { submitFeedback } = useTechPhono();
   const [rating, setRating] = useState<number>(0);
@@ -24,15 +25,15 @@ export default function FeedbackScreen() {
   const [loading, setLoading] = useState<boolean>(false);
   const handleSubmit = async () => {
     if (!repairId) {
-      Alert.alert('Error', 'Invalid repair reference');
+      alert.error('Error', 'Invalid repair reference');
       return;
     }
     if (rating === 0) {
-      Alert.alert('Rating Required', 'Please select a rating');
+      alert.error('Rating Required', 'Please select a rating');
       return;
     }
     if (!feedback.trim()) {
-      Alert.alert('Feedback Required', 'Please write your feedback');
+      alert.error('Feedback Required', 'Please write your feedback');
       return;
     }
     setLoading(true);
@@ -45,13 +46,10 @@ export default function FeedbackScreen() {
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      Alert.alert(
-        'Thank You! 🙏',
-        'Your feedback has been submitted successfully.',
-        [{ text: 'Go to Home', onPress: () => router.replace('/') }]
-      );
+      alert.success('Thank You! 🙏', 'Your feedback has been submitted successfully.');
+      setTimeout(() => router.replace('/'), 500);
     } else {
-      Alert.alert('Submission Failed', result.error || 'Please try again later');
+      alert.error('Submission Failed', result.error || 'Please try again later');
     }
   };
   return (

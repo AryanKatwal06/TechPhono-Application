@@ -210,7 +210,6 @@ export class APISecurity {
       '/auth/register',
       '/auth/logout',
       '/auth/forgot-password',
-      '/auth/reset-password',
       '/api/repairs',
       '/api/repairs/create',
       '/api/repairs/update',

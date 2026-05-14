@@ -1,6 +1,6 @@
 import { openWhatsAppChat } from '@/services/whatsapp';
+import { Haptics } from '@/utils/haptics';
 import { useResponsiveComponentSizes } from '@/utils/responsive';
-import * as Haptics from 'expo-haptics';
 import { MessageCircle } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Alert, Platform, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';

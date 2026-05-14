@@ -1,16 +1,16 @@
 import { deviceTypes } from '@/constants/services';
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { useAlert } from '@/context/AlertContext';
 import { db } from '@/services/firebaseClient';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { formatBookingMessage, openWhatsAppChat } from '@/services/whatsapp';
-import * as Haptics from 'expo-haptics';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Haptics } from '@/utils/haptics';
+import { Stack, useLocalSearchParams, useRouter } from '@/navigation/router';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   BackHandler,
   KeyboardAvoidingView,
   Platform,
@@ -27,6 +27,7 @@ export default function BookingScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ service?: string }>();
   const { user, loading } = useAuth();
+  const alert = useAlert();
   const [formData, setFormData] = useState({
     name: user?.displayName || '',
     phone: '',
@@ -49,7 +50,7 @@ export default function BookingScreen() {
   const handleSubmit = async () => {
     const { name, phone, deviceType, model, issue, service } = formData;
     if (!name || !phone || !deviceType || !issue || !service) {
-      Alert.alert('Missing Fields', 'Please fill in all required fields');
+      alert.error('Missing Fields', 'Please fill in all required fields');
       return;
     }
     setSubmitting(true);
@@ -85,13 +86,10 @@ export default function BookingScreen() {
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      Alert.alert(
-        'Repair Booked 🎉',
-        `Your Job ID is ${jobId}\nAdmin will contact you shortly.`,
-        [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
-      );
+      alert.success('Repair Booked 🎉', `Your Job ID is ${jobId}\nAdmin will contact you shortly.`);
+      setTimeout(() => router.replace('/(tabs)'), 500);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Something went wrong');
+      alert.error('Error', err.message || 'Something went wrong');
     } finally {
       setSubmitting(false);
     }

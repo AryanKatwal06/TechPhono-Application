@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SecurityConfig } from '@/config/security';
 
 // Error categories and types
 export const ErrorCategories = {
@@ -176,7 +177,7 @@ export class ErrorHandler {
       await this.storeErrorLog(errorLog);
 
       // Log to console in development
-      if (process.env.EXPO_PUBLIC_DEV_MODE === 'true') {
+      if (SecurityConfig.isDevMode) {
         console.error(`🔴 ${severity.toUpperCase()} ${category} Error:`, errorLog);
       }
     } catch (loggingError) {

@@ -5,13 +5,12 @@ import {
   collection,
   getDocs,
 } from 'firebase/firestore';
-import { Redirect, useFocusEffect, useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Redirect, useFocusEffect, useRouter } from '@/navigation/router';
+import LinearGradient from 'react-native-linear-gradient';
 import { ArrowRight, ClipboardList, Clock3, LogOut, Package, ShieldCheck, Sparkles, Wrench } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Pressable,
   RefreshControl,
@@ -21,11 +20,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useAlert } from '@/context/AlertContext';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { normalizeStatus, isActiveStatus, isClosedStatus } from '@/utils/statusUtils';
 
 export default function AdminHome() {
   const router = useRouter();
+  const alert = useAlert();
   const insets = useSafeAreaInsets();
   const { user, loading, signOut, isAdmin } = useAuth();
   const [totalRepairs, setTotalRepairs] = useState(0);
@@ -53,8 +54,6 @@ export default function AdminHome() {
 
   const fetchStats = async () => {
     try {
-      console.log('🔍 Fetching admin stats...');
-
       const snapshot = await getDocs(collection(db, 'repairs'));
       const allRepairs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       const visibleRepairs = allRepairs.filter((repair: any) => repair?.is_deleted !== true);
@@ -64,7 +63,6 @@ export default function AdminHome() {
       const completed = visibleRepairs.filter((repair: any) => isClosedStatus(repair?.status)).length;
       const pendingCount = visibleRepairs.filter((repair: any) => normalizeStatus(repair?.status) === 'pending').length;
 
-      console.log(`✅ Stats fetched - Total: ${total}, Active: ${active}, Completed: ${completed}`);
       setTotalRepairs(total);
       setPendingRepairs(active);
       setCompletedRepairs(completed);
@@ -75,7 +73,7 @@ export default function AdminHome() {
       ).length;
 
       if (invalidStatusCount > 0) {
-        console.warn('⚠️ Data issues found:', `${invalidStatusCount} repairs with invalid status`);
+        alert.warning('Data warning', `${invalidStatusCount} repairs have invalid statuses`);
       }
     } catch (error: any) {
       console.error('❌ Error fetching admin stats:', error);
@@ -88,7 +86,7 @@ export default function AdminHome() {
       }
 
       // Keep the dashboard usable even if stats cannot be fetched.
-      console.warn('Admin stats unavailable:', errorMessage);
+      alert.warning('Stats unavailable', errorMessage);
     }
   };
 
@@ -119,16 +117,22 @@ export default function AdminHome() {
       </View>
     );
   }
-  if (!user || !isAdmin) {
-    return <Redirect href="/" />;
+  // Enhanced admin check with debugging
+  if (!user) {
+    return <Redirect href="/auth/login" />;
   }
+  
+  if (!isAdmin) {
+    return <Redirect href="/(tabs)" />;
+  }
+
   const handleLogout = async () => {
     try {
       setLoggingOut(true);
       if (signOut) await signOut();
       router.replace('/auth/login');
     } catch (err: any) {
-      Alert.alert('Logout failed', err.message);
+      alert.error('Logout failed', err.message);
     } finally {
       setLoggingOut(false);
     }

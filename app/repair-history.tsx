@@ -4,13 +4,13 @@ import { db } from '@/services/firebaseClient';
 import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { createStatusFilter, getClosedStatuses } from '@/utils/statusUtils';
 import type { Repair } from '@/types/database';
-import * as Haptics from 'expo-haptics';
-import { Stack, useRouter } from 'expo-router';
+import { Haptics } from '@/utils/haptics';
+import { Stack, useRouter } from '@/navigation/router';
 import { ArrowLeft, LogOut, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
+import { useAlert } from '@/context/AlertContext';
 import {
   ActivityIndicator,
-  Alert,
   BackHandler,
   Platform,
   Pressable,
@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 export default function ProfileScreen() {
   const router = useRouter();
+  const alert = useAlert();
   const { user, loading, signOut } = useAuth();
   const [repairs, setRepairs] = useState<Repair[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -94,18 +95,15 @@ export default function ProfileScreen() {
     return () => handler.remove();
   }, [router]);
   const handleLogout = async () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          if (Platform.OS !== 'web') await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          await signOut();
-          router.replace('/auth/login');
-        },
-      },
-    ]);
+    alert.confirm(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      async () => {
+        if (Platform.OS !== 'web') await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        await signOut();
+        router.replace('/auth/login');
+      }
+    );
   };
 
   const getStatusColor = (status: string) => {

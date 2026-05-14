@@ -1,6 +1,6 @@
 import { db } from '@/services/firebaseClient';
 import { collection, addDoc, getDocs, updateDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter } from '@/navigation/router';
 import { ArrowLeft, Trash2, Plus, Edit2, X, Check } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -16,7 +16,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { Haptics } from '@/utils/haptics';
 
 type Service = {
   id: string;

@@ -1,0 +1,18 @@
+pluginManagement {
+  // Resolve the React Native Gradle plugin from node_modules directly to avoid issues
+  // with provider.exec in some environments (OneDrive/Windows path quirks).
+  def reactNativeGradlePlugin = new File(rootDir, "../node_modules/@react-native/gradle-plugin").absolutePath
+  includeBuild(reactNativeGradlePlugin)
+}
+
+plugins {
+  id("com.facebook.react.settings")
+}
+
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+  ex.autolinkLibrariesFromCommand()
+}
+
+rootProject.name = 'TechPhono'
+
+include ':app'

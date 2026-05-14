@@ -4,8 +4,8 @@ import { useTechPhono } from '@/context/TechPhonoContext';
 import { db } from '@/services/firebaseClient';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import type { CartItem } from '@/types/cart';
-import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { Haptics } from '@/utils/haptics';
+import { useRouter } from '@/navigation/router';
 import { ArrowLeft, Minus, Plus, ShoppingCart } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -391,15 +391,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.text,
+    marginBottom: spacing.xs,
   },
   productDescription: {
     fontSize: 12,
     color: colors.textLight,
+    marginBottom: spacing.sm,
   },
   productFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: spacing.sm,
   },
   productPrice: {
     fontSize: 16,
@@ -413,6 +416,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderRadius: borderRadius.sm,
     padding: spacing.xs,
+    marginTop: spacing.sm,
   },
   ctrlBtn: {
     alignItems: 'center',
@@ -429,5 +433,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: spacing.sm,
   },
 });

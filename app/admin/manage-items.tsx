@@ -1,13 +1,11 @@
 import { db } from '@/services/firebaseClient';
 import { collection, addDoc, getDocs, updateDoc, doc, query, where, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { SecurityConfig } from '@/config/security';
-import * as ImagePicker from 'expo-image-picker';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter } from '@/navigation/router';
 import { ArrowLeft, Image as ImageIcon, Trash2, Crop } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   RefreshControl,
@@ -17,8 +15,10 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useAlert } from '@/context/AlertContext';
+import { CameraUtils } from '@/utils/cameraUtils';
 
-// Define the asset type since expo-image-picker doesn't export it properly
+// Define the asset type returned by the native image picker wrapper.
 type ImageAsset = {
   uri: string;
   base64?: string;
@@ -39,6 +39,7 @@ type Item = {
 
 export default function ManageItems() {
   const router = useRouter();
+  const alert = useAlert();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -79,7 +80,7 @@ export default function ManageItems() {
       });
       setItems(data);
     } catch (error: any) {
-      Alert.alert('Error fetching items', error.message);
+      alert.error('Error fetching items', error.message);
     }
     setLoading(false);
   }
@@ -99,35 +100,32 @@ export default function ManageItems() {
 
   const pickImage = async () => {
     try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permissionResult.granted) {
-        Alert.alert('Permission Required', 'Please grant camera roll permissions to select an image');
+      const pickerResult = await CameraUtils.launchImageLibrary({
+        includeBase64: true,
+        quality: 0.8,
+        selectionLimit: 1,
+      });
+
+      if (pickerResult.canceled || !pickerResult.assets?.length) return;
+
+      const asset = pickerResult.assets[0];
+      if (!asset.uri) {
+        alert.error('Error', 'Selected image is missing a valid URI');
         return;
       }
 
-      const pickerResult = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-        base64: true,
-        allowsEditing: true,
-        aspect: [1, 1],
-      });
-
-      if (pickerResult.canceled) return;
-
-      const asset = pickerResult.assets[0];
       const imageAsset: ImageAsset = {
         uri: asset.uri,
         base64: asset.base64 || undefined,
         width: asset.width,
         height: asset.height,
-        mimeType: asset.mimeType || undefined,
+        mimeType: asset.type || undefined,
       };
 
       setImage(imageAsset);
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image');
+      alert.error('Error', 'Failed to pick image');
     }
   };
 
@@ -138,7 +136,7 @@ export default function ManageItems() {
     const uploadPreset = SecurityConfig.cloudinaryUploadPreset;
 
     if (!cloudName || !uploadPreset) {
-      throw new Error('Cloudinary is not configured. Please set EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME and EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET in .env');
+      throw new Error('Cloudinary is not configured. Please update config/publicConfig.ts with your cloud name and upload preset');
     }
 
     const formData = new FormData();
@@ -165,7 +163,7 @@ export default function ManageItems() {
 
   const handleAddItem = async () => {
     if (!name || !price || !image) {
-      Alert.alert('Missing fields', 'Please provide name, price, and image');
+      alert.error('Missing fields', 'Please provide name, price, and image');
       return;
     }
 
@@ -184,34 +182,30 @@ export default function ManageItems() {
         created_at: serverTimestamp(),
       });
 
-      Alert.alert('Success', 'Item added successfully');
+      alert.success('Success', 'Item added successfully');
       resetForm();
       fetchItems();
 
     } catch (err: any) {
-      console.error(err);
-      Alert.alert('Error', err.message || 'Something went wrong');
+      alert.error('Error', err.message || 'Something went wrong');
     } finally {
       setUploading(false);
     }
   };
 
   async function deleteItem(id: string) {
-    Alert.alert('Delete Item', 'Are you sure you want to remove this item?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await updateDoc(doc(db, 'items', id), { is_active: false });
-            fetchItems();
-          } catch (error: any) {
-            Alert.alert('Error', error.message);
-          }
-        },
-      },
-    ]);
+    alert.confirm(
+      'Delete Item',
+      'Are you sure you want to remove this item?',
+      async () => {
+        try {
+          await updateDoc(doc(db, 'items', id), { is_active: false });
+          fetchItems();
+        } catch (error: any) {
+          alert.error('Error', error.message);
+        }
+      }
+    );
   }
 
   const renderItem = ({ item }: { item: Item }) => {

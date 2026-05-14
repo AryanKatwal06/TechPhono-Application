@@ -1,8 +1,8 @@
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { db } from '@/services/firebaseClient';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
-import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { Haptics } from '@/utils/haptics';
+import { useRouter } from '@/navigation/router';
 import { ArrowLeft, ChevronRight, Wrench } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {

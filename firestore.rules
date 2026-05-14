@@ -15,17 +15,17 @@ service cloud.firestore {
     // REPAIRS collection
     // Enforces ownership checks plus full admin access
     match /repairs/{repairId} {
-      // Only verified authenticated users can create a repair, or admins
-      allow create: if isAdmin() || (isAuthenticated() && request.auth.token.email_verified == true);
+      // Only authenticated users can create a repair, or admins
+      allow create: if isAdmin() || isAuthenticated();
 
-      // Authenticated and verified users can read repairs (for tracking by job_id)
+      // Authenticated users can read repairs (for tracking by job_id)
       // Admins can read all
-      allow read: if isAdmin() || (isAuthenticated() && request.auth.token.email_verified == true);
+      allow read: if isAdmin() || isAuthenticated();
 
       // Only admins can update status, admin_notes, is_deleted
-      // Verified users can update only rating, feedback, and status (to cancel) on their own repairs
+      // Authenticated users can update only rating, feedback, and status (to cancel) on their own repairs
       allow update: if isAdmin() ||
-        (isAuthenticated() && request.auth.token.email_verified == true &&
+        (isAuthenticated() &&
          resource.data.user_id == request.auth.uid &&
          (
            request.resource.data.diff(resource.data).affectedKeys()

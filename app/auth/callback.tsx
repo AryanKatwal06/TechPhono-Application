@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, View } from 'react-native';
-import * as Linking from 'expo-linking';
+import { ActivityIndicator, View } from 'react-native';
+import { useAlert } from '@/context/AlertContext';
 import { extractModeAndOobCode } from '@/services/dynamicLinks';
-import { useRouter } from 'expo-router';
+import { Linking } from 'react-native';
+import { useRouter } from '@/navigation/router';
 
 export default function AuthCallback() {
   const [processing, setProcessing] = useState(true);
   const router = useRouter();
+  const alert = useAlert();
 
   useEffect(() => {
     let mounted = true;
@@ -23,7 +25,7 @@ export default function AuthCallback() {
         if (mode === 'resetPassword' && oobCode) {
           // Redirect to reset screen with oobCode param
           if (mounted) {
-            router.replace({ pathname: '/auth/reset-password', params: { oobCode } });
+            router.replace({ pathname: '/reset-password', params: { oobCode } });
           }
           return;
         }
@@ -31,17 +33,13 @@ export default function AuthCallback() {
         // For any other auth action or invalid link, redirect to login
         if (mounted) {
           setProcessing(false);
-          // Optionally show alert for debugging
-          if (!mode || !oobCode) {
-            console.log('ℹ️ No valid auth action found in link, redirecting to login');
-          }
           router.replace('/auth/login');
         }
       } catch (err) {
         console.error('Error handling auth callback URL:', err);
         if (mounted) {
           setProcessing(false);
-          Alert.alert('Error', 'Failed to process link');
+          alert.error('Error', 'Failed to process link');
           router.replace('/auth/login');
         }
       }
@@ -61,11 +59,17 @@ export default function AuthCallback() {
     })();
 
     const listener = (event: { url: string }) => handleUrl(event.url);
-    Linking.addEventListener('url', listener as any);
+    const subscription = Linking.addEventListener('url', listener as any);
 
     return () => {
       mounted = false;
-      Linking.removeEventListener('url', listener as any);
+      try {
+        subscription?.remove?.();
+      } catch (e) {
+        try {
+          (Linking as any).removeEventListener?.('url', listener);
+        } catch (_err) {}
+      }
     };
   }, [router]);
 

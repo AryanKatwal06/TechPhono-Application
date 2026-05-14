@@ -43,13 +43,13 @@ export function useMemoryCleanup() {
   };
 
   const setTimeout = (callback: () => void, delay: number) => {
-    const timer = global.setTimeout(callback, delay) as number;
+    const timer = globalThis.setTimeout(callback, delay) as unknown as number;
     addTimer(timer);
     return timer;
   };
 
   const setInterval = (callback: () => void, delay: number) => {
-    const interval = global.setInterval(callback, delay) as number;
+    const interval = globalThis.setInterval(callback, delay) as unknown as number;
     addInterval(interval);
     return interval;
   };

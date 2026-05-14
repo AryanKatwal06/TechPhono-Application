@@ -1,66 +1,26 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 // @ts-ignore - React Native persistence import
-import { initializeAuth, getReactNativePersistence, getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { initializeAuth, getReactNativePersistence, getAuth, type Auth } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import { SecurityConfig } from '../config/security';
 
-// Helper function to get Firebase configuration safely
-const getFirebaseConfig = () => {
-  try {
-    SecurityConfig.validateConfig();
-    const config = {
-      apiKey: SecurityConfig.firebaseApiKey,
-      authDomain: SecurityConfig.firebaseAuthDomain,
-      projectId: SecurityConfig.firebaseProjectId,
-      storageBucket: SecurityConfig.firebaseStorageBucket,
-      messagingSenderId: SecurityConfig.firebaseMessagingSenderId,
-      appId: SecurityConfig.firebaseAppId,
-    };
-    
-    // Check if Firebase is properly configured
-    if (!config.apiKey || config.apiKey.includes('YOUR_') || !config.projectId || config.projectId.includes('YOUR_')) {
-      console.warn('⚠️ Firebase not properly configured. Using development fallback.');
-      return getDevelopmentFallback();
-    }
-    
-    return config;
-  } catch (error) {
-    console.error('❌ Security configuration error:', error);
-    return getDevelopmentFallback();
-  }
+const firebaseConfig = {
+  apiKey: SecurityConfig.firebaseApiKey,
+  authDomain: SecurityConfig.firebaseAuthDomain,
+  projectId: SecurityConfig.firebaseProjectId,
+  storageBucket: SecurityConfig.firebaseStorageBucket,
+  messagingSenderId: SecurityConfig.firebaseMessagingSenderId,
+  appId: SecurityConfig.firebaseAppId,
 };
-
-// Development fallback configuration to prevent crashes
-const getDevelopmentFallback = () => {
-  console.log('🔧 Using development fallback - Firebase features will be limited');
-  return {
-    apiKey: 'demo-api-key-for-development',
-    authDomain: 'demo.firebaseapp.com',
-    projectId: 'demo-project',
-    storageBucket: 'demo-project.appspot.com',
-    messagingSenderId: '123456789',
-    appId: '1:123456789:web:abcdef',
-  };
-};
-
-const firebaseConfig = getFirebaseConfig();
-
-// Remove console logs in production for security
-if (SecurityConfig.isDebugMode) {
-  console.log('🔧 Firebase Client - Project ID:', firebaseConfig.projectId);
-  console.log('🔑 Firebase Client - API Key configured:', !!firebaseConfig.apiKey);
-}
 
 // Initialize Firebase app (prevent re-initialization)
-let app;
+let app: FirebaseApp | any;
 try {
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-  console.log('✅ Firebase app initialized successfully');
 } catch (error) {
-  console.error('❌ Firebase app initialization failed:', error);
-  // Create a mock app for development to prevent crashes
+  console.error('Firebase app initialization failed:', error);
   app = {
     options: firebaseConfig,
     name: '[DEFAULT]',
@@ -69,20 +29,17 @@ try {
 }
 
 // Initialize Firebase Auth with AsyncStorage persistence for React Native
-let auth: ReturnType<typeof initializeAuth>;
+let auth: Auth | any;
 try {
   auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage),
   });
-  console.log('✅ Firebase Auth initialized successfully');
 } catch (error) {
-  console.error('❌ Firebase Auth initialization failed:', error);
+  console.error('Firebase Auth initialization failed:', error);
   try {
-    // If auth is already initialized, get the existing instance
     auth = getAuth(app) as any;
   } catch (authError) {
-    console.error('❌ Failed to get existing Firebase Auth instance:', authError);
-    // Create a mock auth object for development
+    console.error('Failed to get existing Firebase Auth instance:', authError);
     auth = {
       currentUser: null,
       onAuthStateChanged: () => () => {},
@@ -94,13 +51,11 @@ try {
 }
 
 // Initialize Firestore
-let db;
+let db: Firestore | any;
 try {
   db = getFirestore(app);
-  console.log('✅ Firestore initialized successfully');
 } catch (error) {
-  console.error('❌ Firestore initialization failed:', error);
-  // Create a mock db for development
+  console.error('Firestore initialization failed:', error);
   db = {
     collection: () => ({
       doc: () => ({
@@ -118,13 +73,11 @@ try {
 }
 
 // Initialize Firebase Storage
-let storage;
+let storage: FirebaseStorage | any;
 try {
   storage = getStorage(app);
-  console.log('✅ Firebase Storage initialized successfully');
 } catch (error) {
-  console.error('❌ Firebase Storage initialization failed:', error);
-  // Create a mock storage for development
+  console.error('Firebase Storage initialization failed:', error);
   storage = {
     ref: () => ({
       put: () => Promise.resolve({ metadata: { name: 'mock-file' } }),

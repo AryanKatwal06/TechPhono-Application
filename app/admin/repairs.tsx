@@ -6,12 +6,11 @@ import {
   onSnapshot,
   Timestamp,
 } from 'firebase/firestore';
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { ArrowLeft, ChevronRight, Clock3, Construction, TriangleAlert, UserRound } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from '@/navigation/router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -20,10 +19,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useAlert } from '@/context/AlertContext';
 import { isActiveStatus, formatStatusForDisplay } from '@/utils/statusUtils';
 
 export default function RepairsList() {
   const router = useRouter();
+  const alert = useAlert();
   const [repairs, setRepairs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -68,7 +69,7 @@ export default function RepairsList() {
       setRepairs(data);
     } catch (error: any) {
       console.error('❌ Admin fetch error:', error);
-      Alert.alert('Error', 'Failed to fetch repair requests: ' + error.message);
+      alert.error('Error', 'Failed to fetch repair requests: ' + error.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -149,18 +150,18 @@ export default function RepairsList() {
         {item.device_type} {item.model ? `• ${item.model}` : ''}
       </Text>
       <View style={styles.row}>
-        <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
+        <UserRound size={14} color={colors.textSecondary} />
         <Text style={styles.metaText}>{item.name} • {item.phone}</Text>
       </View>
       <View style={styles.row}>
-        <Ionicons name="alert-circle-outline" size={14} color={colors.textSecondary} />
+        <TriangleAlert size={14} color={colors.textSecondary} />
         <Text style={styles.metaText} numberOfLines={1}>{item.issue}</Text>
       </View>
       <View style={styles.cardFooter}>
         <Text style={styles.date}>
           {new Date(item.created_at).toLocaleDateString()}
         </Text>
-        <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+        <ChevronRight size={16} color={colors.textLight} />
       </View>
     </Pressable>
   );
@@ -169,7 +170,7 @@ export default function RepairsList() {
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <ArrowLeft size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.title}>Active Repairs</Text>
         </View>
@@ -177,7 +178,7 @@ export default function RepairsList() {
           style={styles.historyButton}
           onPress={() => router.push('/admin/history' as any)}
         >
-          <Ionicons name="time-outline" size={20} color={colors.primary} />
+          <Clock3 size={20} color={colors.primary} />
           <Text style={styles.historyText}>History</Text>
         </TouchableOpacity>
       </View>
@@ -187,7 +188,7 @@ export default function RepairsList() {
         </View>
       ) : repairs.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="construct-outline" size={64} color={colors.textLight} />
+          <Construction size={64} color={colors.textLight} />
           <Text style={styles.emptyTitle}>No Active Repairs</Text>
           <Text style={styles.emptyText}>New repair requests will appear here</Text>
         </View>

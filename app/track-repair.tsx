@@ -13,13 +13,13 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import type { Repair } from '@/types/database';
-import * as Haptics from 'expo-haptics';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Haptics } from '@/utils/haptics';
+import { Stack, useLocalSearchParams, useRouter } from '@/navigation/router';
 import { ArrowLeft, Search } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useAlert } from '@/context/AlertContext';
 import {
   ActivityIndicator,
-  Alert,
   BackHandler,
   Platform,
   Pressable,
@@ -57,6 +57,7 @@ const docToRepair = (docSnap: any): Repair => {
 
 export default function TrackRepairScreen() {
   const router = useRouter();
+  const alert = useAlert();
   const params = useLocalSearchParams<{ jobId?: string }>();
 
   const [jobId, setJobId] = useState(params.jobId || '');
@@ -120,7 +121,7 @@ export default function TrackRepairScreen() {
       if (snapshot.empty) {
         console.warn('⚠️ No data found for Job ID:', searchId);
         setError('Job ID not found. Please check and try again.');
-        Alert.alert('Not Found', 'Invalid Job ID');
+        alert.error('Not Found', 'Invalid Job ID');
       } else {
         const repairData = docToRepair(snapshot.docs[0]);
         console.log('✅ Repair data found:', repairData);
@@ -129,7 +130,7 @@ export default function TrackRepairScreen() {
     } catch (err: any) {
       console.error('💥 Unexpected error:', err);
       setError(err.message || 'An unexpected error occurred.');
-      Alert.alert('Error', err.message || 'Failed to fetch repair details');
+      alert.error('Error', err.message || 'Failed to fetch repair details');
     } finally {
       setLoading(false);
     }
@@ -194,15 +195,10 @@ export default function TrackRepairScreen() {
   const cancelRequest = async () => {
     if (!repair) return;
 
-    Alert.alert(
+    alert.confirm(
       'Cancel Repair',
       'Are you sure you want to cancel this request?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes',
-          style: 'destructive',
-          onPress: async () => {
+      async () => {
             try {
               console.log('🔄 Attempting to cancel repair:', repair.job_id);
               
@@ -222,16 +218,8 @@ export default function TrackRepairScreen() {
               // Update local state to reflect the change
               setRepair(prev => prev ? { ...prev, status: 'cancelled' } : null);
               
-              Alert.alert(
-                'Success',
-                'Repair request cancelled successfully',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => router.back()
-                  }
-                ]
-              );
+              alert.success('Success', 'Repair request cancelled successfully');
+              router.back();
             } catch (error: any) {
               console.error('💥 Failed to cancel repair:', error);
               
@@ -244,11 +232,9 @@ export default function TrackRepairScreen() {
                 errorMessage = error.message;
               }
               
-              Alert.alert('Error', errorMessage);
+              alert.error('Error', errorMessage);
             }
-          },
-        },
-      ]
+          }
     );
   };
 

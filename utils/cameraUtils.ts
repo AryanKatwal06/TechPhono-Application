@@ -1,8 +1,16 @@
-import { Platform } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { PermissionsAndroid, Platform } from 'react-native';
+import { launchCamera, launchImageLibrary, Asset } from 'react-native-image-picker';
+
+type CameraOptionsInput = { includeBase64?: boolean; quality?: number; selectionLimit?: number };
+
+export type ImagePickerAsset = Asset;
+
+export type ImagePickerResult = {
+  canceled: boolean;
+  assets: Asset[] | null;
+};
 
 export class CameraUtils {
-  private static isCameraInitialized = false;
   private static cameraRequestCount = 0;
 
   /**
@@ -14,26 +22,27 @@ export class CameraUtils {
         return true; // Web handles permissions differently
       }
 
+      if (Platform.OS === 'ios') {
+        return true;
+      }
+
       // Prevent multiple simultaneous requests
       if (this.cameraRequestCount > 0) {
-        console.warn('⚠️ Camera permission request already in progress');
         return false;
       }
 
       this.cameraRequestCount++;
-
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      const status = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
       
       this.cameraRequestCount = 0;
 
-      if (status !== 'granted') {
-        console.warn('⚠️ Camera permission denied');
+      if (status !== PermissionsAndroid.RESULTS.GRANTED) {
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('❌ Camera permission request failed:', error);
+      console.error('Camera permission request failed:', error);
       this.cameraRequestCount = 0;
       return false;
     }
@@ -48,16 +57,24 @@ export class CameraUtils {
         return true;
       }
 
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (Platform.OS === 'ios') {
+        return true;
+      }
+
+      const androidVersion = typeof Platform.Version === 'number' ? Platform.Version : parseInt(Platform.Version, 10);
+      const permission = androidVersion >= 33
+        ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
+        : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
+
+      const status = await PermissionsAndroid.request(permission);
       
-      if (status !== 'granted') {
-        console.warn('⚠️ Media library permission denied');
+      if (status !== PermissionsAndroid.RESULTS.GRANTED) {
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('❌ Media library permission request failed:', error);
+      console.error('Media library permission request failed:', error);
       return false;
     }
   }
@@ -65,7 +82,7 @@ export class CameraUtils {
   /**
    * Launch camera with proper resource management
    */
-  static async launchCamera(options?: ImagePicker.ImagePickerOptions): Promise<ImagePicker.ImagePickerResult> {
+  static async launchCamera(options?: CameraOptionsInput): Promise<ImagePickerResult> {
     try {
       // Check permissions first
       const hasPermission = await this.requestCameraPermissions();
@@ -77,24 +94,22 @@ export class CameraUtils {
       }
 
       // Default options for better performance
-      const defaultOptions: ImagePicker.ImagePickerOptions = {
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
+      const defaultOptions = {
+        mediaType: 'photo' as const,
+        saveToPhotos: false,
+        includeBase64: true,
         quality: 0.8,
         ...options
       };
 
-      const result = await ImagePicker.launchCameraAsync(defaultOptions);
-      
-      // Log camera usage for debugging
-      if (!result.canceled) {
-        console.log('📸 Camera captured image successfully');
-      }
+      const result = await launchCamera(defaultOptions as any);
 
-      return result;
+      return {
+        canceled: !!result.didCancel || !!result.errorCode,
+        assets: result.assets ?? null,
+      };
     } catch (error) {
-      console.error('❌ Camera launch failed:', error);
+      console.error('Camera launch failed:', error);
       return {
         canceled: true,
         assets: null
@@ -105,7 +120,7 @@ export class CameraUtils {
   /**
    * Launch image library with proper error handling
    */
-  static async launchImageLibrary(options?: ImagePicker.ImagePickerOptions): Promise<ImagePicker.ImagePickerResult> {
+  static async launchImageLibrary(options?: CameraOptionsInput): Promise<ImagePickerResult> {
     try {
       // Check permissions first
       const hasPermission = await this.requestMediaLibraryPermissions();
@@ -117,23 +132,22 @@ export class CameraUtils {
       }
 
       // Default options
-      const defaultOptions: ImagePicker.ImagePickerOptions = {
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
+      const defaultOptions = {
+        mediaType: 'photo' as const,
+        selectionLimit: 1,
+        includeBase64: true,
         quality: 0.8,
         ...options
       };
 
-      const result = await ImagePicker.launchImageLibraryAsync(defaultOptions);
-      
-      if (!result.canceled) {
-        console.log('🖼️ Image selected from library successfully');
-      }
+      const result = await launchImageLibrary(defaultOptions as any);
 
-      return result;
+      return {
+        canceled: !!result.didCancel || !!result.errorCode,
+        assets: result.assets ?? null,
+      };
     } catch (error) {
-      console.error('❌ Image library launch failed:', error);
+      console.error('Image library launch failed:', error);
       return {
         canceled: true,
         assets: null
@@ -145,13 +159,7 @@ export class CameraUtils {
    * Clean up camera resources
    */
   static cleanup(): void {
-    try {
-      this.isCameraInitialized = false;
-      this.cameraRequestCount = 0;
-      console.log('🧹 Camera resources cleaned up');
-    } catch (error) {
-      console.warn('⚠️ Camera cleanup warning:', error);
-    }
+    this.cameraRequestCount = 0;
   }
 
   /**
@@ -163,10 +171,9 @@ export class CameraUtils {
         return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
       }
 
-      const status = await ImagePicker.getCameraPermissionsAsync();
-      return status.status === 'granted';
+      return true;
     } catch (error) {
-      console.error('❌ Camera availability check failed:', error);
+      console.error('Camera availability check failed:', error);
       return false;
     }
   }

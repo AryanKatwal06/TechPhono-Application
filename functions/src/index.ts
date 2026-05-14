@@ -1,3 +1,5 @@
+// `firebase-functions` types are only needed when deploying; ignore in the app's typecheck environment
+// @ts-ignore
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 
@@ -9,7 +11,7 @@ const firestore = admin.firestore();
 // Automatically marks all users as verified - email verification not required for app access.
 export const syncEmailVerification = functions.pubsub
   .schedule('every 5 minutes')
-  .onRun(async (context) => {
+  .onRun(async (context: any) => {
     console.log('Starting email verification sync...');
 
     try {

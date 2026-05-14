@@ -1,4 +1,4 @@
-import * as Linking from 'expo-linking';
+import { Linking } from 'react-native';
 
 // Parse a URL that may be a Firebase Dynamic Link wrapping the real link.
 // Returns an object with mode and oobCode when found, otherwise null.
@@ -6,8 +6,8 @@ export function extractModeAndOobCode(rawUrl: string | null): { mode?: string; o
   if (!rawUrl) return null;
 
   try {
-    const parsed = Linking.parse(rawUrl);
-    const params = parsed.queryParams || {};
+    const url = new URL(rawUrl);
+    const params = Object.fromEntries(url.searchParams.entries());
 
     // Common dynamic link wraps the real link in `link` param
     let inner = params.link as string | undefined;
@@ -19,8 +19,8 @@ export function extractModeAndOobCode(rawUrl: string | null): { mode?: string; o
     }
 
     if (inner) {
-      const innerParsed = Linking.parse(inner);
-      const innerParams = innerParsed.queryParams || {};
+      const innerUrl = new URL(inner);
+      const innerParams = Object.fromEntries(innerUrl.searchParams.entries());
       const mode = innerParams.mode as string | undefined;
       const oobCode = innerParams.oobCode as string | undefined;
       if (mode || oobCode) return { mode, oobCode };

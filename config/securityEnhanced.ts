@@ -1,6 +1,38 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Crypto from 'expo-crypto';
+import { decode as base64Decode, encode as base64Encode } from 'base64-arraybuffer';
 import { Platform } from 'react-native';
+import { createChecksum, createRandomId } from '@/utils/nativeCrypto';
+
+// Simple polyfill for TextEncoder/TextDecoder to avoid Hermes crashes
+class SimpleTextEncoder {
+  encode(str: string): Uint8Array {
+    const utf8 = unescape(encodeURIComponent(str));
+    const arr = new Uint8Array(utf8.length);
+    for (let i = 0; i < utf8.length; i++) {
+      arr[i] = utf8.charCodeAt(i);
+    }
+    return arr;
+  }
+}
+
+class SimpleTextDecoder {
+  decode(arr: ArrayBuffer): string {
+    const uint8 = new Uint8Array(arr);
+    // Use smaller chunks to avoid call stack size exceeded on large arrays
+    let str = '';
+    for (let i = 0; i < uint8.length; i += 10000) {
+      str += String.fromCharCode.apply(null, Array.from(uint8.subarray(i, i + 10000)));
+    }
+    try {
+      return decodeURIComponent(escape(str));
+    } catch (e) {
+      return str; // Fallback if not valid UTF-8
+    }
+  }
+}
+
+const encoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : new SimpleTextEncoder();
+const decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder() : new SimpleTextDecoder();
 
 // Enhanced Security Configuration
 export class SecurityEnhanced {
@@ -18,7 +50,8 @@ export class SecurityEnhanced {
       const key = await this.getOrCreateEncryptionKey();
       // Simple XOR encryption for React Native compatibility
       const encrypted = await this.simpleXOREncrypt(data, key);
-      return btoa(encrypted); // Base64 encode
+      const bytes = encoder.encode(encrypted);
+      return base64Encode(Uint8Array.from(bytes).buffer);
     } catch (error) {
       console.error('❌ Encryption failed:', error);
       throw new Error('Encryption failed');
@@ -28,7 +61,7 @@ export class SecurityEnhanced {
   static async decryptData(encryptedData: string): Promise<string> {
     try {
       const key = await this.getOrCreateEncryptionKey();
-      const decoded = atob(encryptedData); // Base64 decode
+      const decoded = decoder.decode(base64Decode(encryptedData));
       const decrypted = await this.simpleXOREncrypt(decoded, key);
       return decrypted;
     } catch (error) {
@@ -47,13 +80,13 @@ export class SecurityEnhanced {
     try {
       let key = await AsyncStorage.getItem(this.ENCRYPTION_KEY);
       if (!key) {
-        key = Crypto.randomUUID();
+        key = createRandomId();
         await AsyncStorage.setItem(this.ENCRYPTION_KEY, key);
       }
       return key;
     } catch (error) {
       console.error('❌ Failed to get/create encryption key:', error);
-      return Crypto.randomUUID(); // Fallback
+      return createRandomId(); // Fallback
     }
   }
 
@@ -135,7 +168,7 @@ export class SecurityEnhanced {
   private static async generateSessionId(): Promise<string> {
     const sessionId = await AsyncStorage.getItem('secure_session_id');
     if (!sessionId) {
-      const newSessionId = Crypto.randomUUID();
+      const newSessionId = createRandomId();
       await AsyncStorage.setItem('secure_session_id', newSessionId);
       return newSessionId;
     }
@@ -151,12 +184,7 @@ export class SecurityEnhanced {
   }
 
   private static async generateChecksum(data: any): Promise<string> {
-    const dataString = JSON.stringify(data);
-    const hash = await Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
-      dataString
-    );
-    return hash;
+    return createChecksum(data);
   }
 
   private static async triggerSecurityAlert(event: any): Promise<void> {

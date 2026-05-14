@@ -3,9 +3,8 @@ import { WhatsAppFAB } from '@/components/WhatsAppFAB';
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { db } from '@/services/firebaseClient';
 import { collection, query, where, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import LinearGradient from 'react-native-linear-gradient';
+import { useRouter } from '@/navigation/router';
 import {
   ChevronRight,
   Phone,
@@ -31,6 +30,7 @@ import {
   RefreshControl,
   Platform,
   useWindowDimensions,
+  StatusBar,
 } from 'react-native';
 
 
@@ -121,7 +121,7 @@ export default function HomeScreen() {
   if (!authReady) {
     return (
       <View style={styles.skeletonContainer}>
-        <StatusBar style="dark" />
+        <StatusBar barStyle="dark-content" />
         <Skeleton height={32} width={150} style={{ marginBottom: spacing.lg }} />
         <Skeleton height={48} style={{ marginBottom: spacing.lg, borderRadius: borderRadius.lg }} />
         <View style={{ flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg }}>
@@ -141,7 +141,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar barStyle="light-content" />
 
       <LinearGradient 
         colors={['#3B82F6', '#2563EB', '#1E40AF']} 

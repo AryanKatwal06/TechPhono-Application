@@ -1,13 +1,13 @@
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { useTechPhono } from '@/context/TechPhonoContext';
+import { useAlert } from '@/context/AlertContext';
 import { sendCartToWhatsApp } from '@/services/whatsapp';
 import type { CartItem } from '@/types/cart';
-import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { Haptics } from '@/utils/haptics';
+import { useRouter } from '@/navigation/router';
 import { ArrowLeft, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 import {
-    Alert,
     Animated,
     BackHandler,
     Image,
@@ -87,6 +87,7 @@ function CartItemCard({
 }
 export default function CartScreen() {
   const router = useRouter();
+  const alert = useAlert();
   const {
     cart,
     updateCartQuantity,
@@ -143,18 +144,13 @@ export default function CartScreen() {
     }
     try {
       await sendCartToWhatsApp(cart, getCartTotal());
-      Alert.alert(
+      alert.success(
         'Order Sent',
-        'Admin will contact you soon regarding the product.',
-        [
-          {
-            text: 'OK',
-            onPress: () => clearCart(),
-          },
-        ]
+        'Admin will contact you soon regarding the product.'
       );
+      clearCart();
     } catch {
-      Alert.alert(
+      alert.error(
         'Error',
         'Unable to open WhatsApp. Please try again.'
       );

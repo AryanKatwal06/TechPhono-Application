@@ -12,9 +12,9 @@ import {
   signInWithCredential,
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import * as Linking from 'expo-linking';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+import { Linking } from 'react-native';
 import { auth, db } from '../services/firebaseClient';
 import { SecurityConfig } from '../config/security';
 import { ValidationUtils, RateLimitUtils } from '../utils/validation';
@@ -50,7 +50,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   // Secure role-based admin check
-  const isAdmin = user?.email ? SecurityConfig.adminEmails.includes(user.email.toLowerCase()) : false;
+  const isAdmin = SecurityConfig.isAdminEmail(user?.email);
+  
+  // Debug logging for admin detection
+  useEffect(() => {
+    if (user?.email) {
+      const adminCheck = SecurityConfig.isAdminEmail(user.email);
+      console.log('🔐 AuthContext - User email:', user.email);
+      console.log('👑 AuthContext - Is admin:', adminCheck);
+      console.log('🔍 AuthContext - Admin emails configured:', SecurityConfig.adminEmails);
+    }
+  }, [user?.email]);
 
   useEffect(() => {
     let mounted = true;
@@ -137,9 +147,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return 'Please enter a valid email address';
       }
 
-      const passwordValidation = ValidationUtils.validatePassword(password);
-      if (!passwordValidation.isValid) {
-        return passwordValidation.errors[0];
+      if (!password || !password.trim()) {
+        return 'Please enter your password';
       }
 
       const cleanEmail = email.trim().toLowerCase();
@@ -245,10 +254,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const resetPassword = async (email: string) => {
     try {
       const cleanEmail = email.trim().toLowerCase();
+      if (!ValidationUtils.isValidEmail(cleanEmail)) {
+        return 'Please enter a valid email address.';
+      }
+
+      const isNativeApp = Platform.OS !== 'web';
+      const customSchemeUrl = 'techphono://auth/callback';
+      const webUrl = SecurityConfig.appUrl?.trim();
+      
+      const continueUrl = isNativeApp ? customSchemeUrl : (webUrl || customSchemeUrl);
+
+      console.log('🔐 Password Reset URL Config:', {
+        platform: Platform.OS,
+        isNativeApp,
+        customSchemeUrl,
+        webUrl: webUrl || '❌ Not set',
+        usingUrl: continueUrl,
+      });
 
       const actionCodeSettings = {
-        url: SecurityConfig.appUrl || 'https://your-app-domain.example/auth/callback',
+        url: continueUrl,
         handleCodeInApp: true,
+        android: {
+          packageName: 'com.techphono.repair',
+          installApp: true,
+          minimumVersion: '1',
+        },
+        iOS: {
+          bundleId: 'com.techphono.repair',
+        },
       } as any;
 
       await sendPasswordResetEmail(auth, cleanEmail, actionCodeSettings);
@@ -324,6 +358,11 @@ function mapFirebaseAuthError(code?: string | null): string | null {
   let normalized = String(code);
   const match = normalized.match(/auth\/[a-z-]+/i);
   if (match) normalized = match[0];
+
+  // Some Firebase messages contain the full sentence instead of the short code.
+  if (/api-key-not-valid/i.test(normalized)) {
+    return 'Firebase API key invalid. Check config/publicConfig.ts or your environment variables and ensure the API key matches your Firebase project.';
+  }
 
   switch (normalized) {
     case 'auth/email-already-in-use':

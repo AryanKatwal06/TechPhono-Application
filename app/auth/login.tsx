@@ -1,12 +1,12 @@
 import AppLogo from '@/components/AppLogo';
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { useAlert } from '@/context/AlertContext';
 import { SecurityConfig } from '@/config/security';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/navigation/router';
 import { Eye, EyeOff } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -19,7 +19,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import AuthFeedback from '@/components/AuthFeedback';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from 'react-native-linear-gradient';
 
 // Responsive values
 const getResponsiveValues = () => {
@@ -57,6 +57,7 @@ const getResponsiveValues = () => {
 export default function LoginScreen() {
   const router = useRouter();
   const { signIn } = useAuth();
+  const alert = useAlert();
   const { isTablet, isDesktop, spacing_val, typography_val, componentSizes } = getResponsiveValues();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -124,18 +125,24 @@ export default function LoginScreen() {
       const errorMsg = await signIn(email.trim(), password);
       if (errorMsg) {
         setError(errorMsg);
-        Alert.alert('Login Failed', errorMsg);
+        alert.error('Login Failed', errorMsg);
         setLoading(false);
         return;
       }
+      // Enhanced role-based redirection with fallback
+      const targetIsAdmin = SecurityConfig.isAdminEmail(email);
+      console.log('🔐 Login redirect check:', { email, isAdmin: targetIsAdmin });
+      
+      // Add a small delay to ensure user state is updated in AuthContext
       setTimeout(() => {
-        const targetIsAdmin = SecurityConfig.adminEmails.includes(email.trim().toLowerCase());
         if (targetIsAdmin) {
+          console.log('👑 Redirecting admin to /admin');
           router.replace('/admin');
         } else {
+          console.log('👤 Redirecting user to /(tabs)');
           router.replace('/(tabs)');
         }
-      }, 300);
+      }, 100);
     } catch {
       setError('An unexpected error occurred');
       setLoading(false);

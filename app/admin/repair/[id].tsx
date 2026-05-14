@@ -1,8 +1,8 @@
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { db } from '@/services/firebaseClient';
 import { doc, getDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft, Lock } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from '@/navigation/router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -110,7 +110,7 @@ export default function AdminRepairDetail() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <ArrowLeft size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.title}>
             {isFinal ? 'Repair Details' : 'Update Repair'}
@@ -130,7 +130,7 @@ export default function AdminRepairDetail() {
         </View>
         {isFinal ? (
           <View style={styles.lockedContainer}>
-            <Ionicons name="lock-closed-outline" size={48} color={colors.textSecondary} />
+            <Lock size={48} color={colors.textSecondary} />
             <Text style={styles.lockedTitle}>Request Closed</Text>
             <Text style={styles.lockedText}>
               This request is {repair.status} and cannot be edited.

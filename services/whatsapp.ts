@@ -36,23 +36,33 @@ export const formatBookingMessage = (data: {
 Please confirm receipt.`;
 };
 export const sendCartToWhatsApp = async (cart: CartItem[], total: number) => {
-  if (!cart.length) return;
-  const itemsText = cart
-    .map(
-      (item) =>
-        `• ${item.product.name} × ${item.quantity} = ₹${
-          item.product.price * item.quantity
-        }`
-    )
-    .join('\n');
-  const message = `
+  try {
+    if (!cart.length) return;
+    const itemsText = cart
+      .map(
+        (item) =>
+          `• ${item.product.name} × ${item.quantity} = ₹${
+            item.product.price * item.quantity
+          }`
+      )
+      .join('\n');
+    const message = `
 🛒 *New Product Order – TechPhono*
 ${itemsText}
 💰 *Total:* ₹${total}
 📞 Please contact me regarding this order.
 `;
-  const url = `https://wa.me/${ADMIN_PHONE}?text=${encodeURIComponent(
-    message
-  )}`;
-  await Linking.openURL(url);
+    const url = `https://wa.me/${ADMIN_PHONE}?text=${encodeURIComponent(
+      message
+    )}`;
+    
+    const supported = await Linking.canOpenURL(url);
+    if (!supported) {
+      throw new Error('WhatsApp not supported');
+    }
+    await Linking.openURL(url);
+  } catch (error) {
+    console.error('Failed to send cart to WhatsApp:', error);
+    throw error;
+  }
 };

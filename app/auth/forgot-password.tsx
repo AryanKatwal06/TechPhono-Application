@@ -1,12 +1,13 @@
 import AppLogo from '@/components/AppLogo';
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { useAlert } from '@/context/AlertContext';
+import { ValidationUtils } from '@/utils/validation';
+import { useRouter } from '@/navigation/router';
+import { Haptics } from '@/utils/haptics';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   BackHandler,
   KeyboardAvoidingView,
@@ -21,7 +22,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import AuthFeedback from '@/components/AuthFeedback';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from 'react-native-linear-gradient';
 
 // Responsive values
 const getResponsiveValues = () => {
@@ -57,6 +58,7 @@ export default function ForgotPassword() {
   const router = useRouter();
   const { isTablet, isDesktop, spacing_val, typography_val } = getResponsiveValues();
   const { resetPassword } = useAuth();
+  const alert = useAlert();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -109,18 +111,26 @@ export default function ForgotPassword() {
   };
 
   const handleReset = async () => {
-    if (!email) {
-      Alert.alert('Error', 'Please enter your email address');
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail) {
+      alert.error('Error', 'Please enter your email address');
       return;
     }
+
+    if (!ValidationUtils.isValidEmail(cleanEmail)) {
+      alert.error('Error', 'Please enter a valid email address');
+      return;
+    }
+
     setLoading(true);
     if (Platform.OS !== 'web') {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    const error = await resetPassword(email);
+    const error = await resetPassword(cleanEmail);
     setLoading(false);
     if (error) {
-      Alert.alert('Error', error);
+      alert.error('Error', error);
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
@@ -128,11 +138,10 @@ export default function ForgotPassword() {
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      Alert.alert(
-        'Success', 
-        'Password reset email sent. Please check your inbox and follow the link to reset your password.',
-        [{ text: 'OK', onPress: () => router.replace('/auth/login') }]
-      );
+      alert.success('Success', 'A password reset email has been sent to you.');
+      setTimeout(() => {
+        router.replace('/auth/login');
+      }, 1000);
     }
   };
 
