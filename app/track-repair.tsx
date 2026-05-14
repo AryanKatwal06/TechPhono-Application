@@ -65,25 +65,6 @@ export default function TrackRepairScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const testConnection = async () => {
-    try {
-      console.log('🔧 Testing Firestore connection...');
-      const q = query(
-        collection(db, 'repairs'),
-        where('is_deleted', '==', false)
-      );
-      const snapshot = await getDocs(q);
-
-      console.log('📋 Existing repairs:', snapshot.size);
-
-      if (snapshot.size > 0) {
-        console.log('✅ Found sample Job IDs:', snapshot.docs.slice(0, 5).map(d => d.data().job_id));
-      }
-    } catch (err) {
-      console.error('💥 Connection test failed:', err);
-    }
-  };
-
   const getTimelineInfo = (status: string | undefined) => {
     if (!status) return { currentIndex: -1 };
     const currentStatus = status.toLowerCase();
@@ -100,15 +81,11 @@ export default function TrackRepairScreen() {
       return;
     }
 
-    if (Platform.OS !== 'web' && !id) {
-      Haptics.selectionAsync();
     }
 
     setLoading(true);
     setError('');
 
-    try {
-      console.log('🔍 Searching for Job ID:', searchId);
 
       const q = query(
         collection(db, 'repairs'),
@@ -116,7 +93,6 @@ export default function TrackRepairScreen() {
       );
       const snapshot = await getDocs(q);
 
-      console.log('📊 Query result: found', snapshot.size, 'documents');
 
       if (snapshot.empty) {
         console.warn('⚠️ No data found for Job ID:', searchId);
@@ -124,7 +100,6 @@ export default function TrackRepairScreen() {
         alert.error('Not Found', 'Invalid Job ID');
       } else {
         const repairData = docToRepair(snapshot.docs[0]);
-        console.log('✅ Repair data found:', repairData);
         setRepair(repairData);
       }
     } catch (err: any) {
@@ -135,10 +110,6 @@ export default function TrackRepairScreen() {
       setLoading(false);
     }
   }, [jobId, params.jobId]);
-
-  useEffect(() => {
-    testConnection();
-  }, []);
 
   // Effect to handle initial job ID from params or state — run whenever `jobId` changes
   useEffect(() => {
@@ -161,7 +132,6 @@ export default function TrackRepairScreen() {
         if (change.type === 'modified' || change.type === 'added') {
           const updatedRepair = docToRepair(change.doc);
           if (updatedRepair.job_id === jobId) {
-            console.log('🔄 Real-time update received:', updatedRepair);
             setRepair(updatedRepair);
           }
         }
@@ -200,8 +170,6 @@ export default function TrackRepairScreen() {
       'Are you sure you want to cancel this request?',
       async () => {
             try {
-              console.log('🔄 Attempting to cancel repair:', repair.job_id);
-              
               const updateData: any = {
                 status: 'cancelled',
               };
@@ -212,9 +180,7 @@ export default function TrackRepairScreen() {
               }
               
               await updateDoc(doc(db, 'repairs', repair.id), updateData);
-              
-              console.log('✅ Repair cancelled successfully:', repair.job_id);
-              
+
               // Update local state to reflect the change
               setRepair(prev => prev ? { ...prev, status: 'cancelled' } : null);
               

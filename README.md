@@ -140,7 +140,7 @@ TechPhono-Repair-App/
 npm install
 ```
 
-2. Review `config/publicConfig.ts` and confirm the Firebase, Cloudinary, WhatsApp, admin email, and app URL values match your environment.
+2. Review `config/publicConfig.ts` and keep private values out of Git. Use local-only overrides for any Firebase, Cloudinary, WhatsApp, admin email, or callback settings you need during development.
 
 3. For iOS on macOS, install pods.
 
@@ -175,7 +175,7 @@ npm run ios
 
 ## Environment Variables
 
-This project does not currently rely on a standalone `.env` file. Runtime configuration is read from `config/publicConfig.ts` and exposed through `SecurityConfig`.
+Runtime configuration is read from `config/publicConfig.ts` and exposed through `SecurityConfig`. Keep secrets in local-only files or environment-specific tooling; do not commit them to the repository.
 
 | Key | Used for |
 | --- | --- |
@@ -246,15 +246,7 @@ This project does not currently rely on a standalone `.env` file. Runtime config
 
 ## Screenshots
 
-Add project screenshots here after capturing production or emulator views.
-
-| Home | Booking | Repair Tracking | Admin Dashboard |
-| --- | --- | --- | --- |
-| Screenshot placeholder | Screenshot placeholder | Screenshot placeholder | Screenshot placeholder |
-
-| Shop | Cart | Repair History | Service Management |
-| --- | --- | --- | --- |
-| Screenshot placeholder | Screenshot placeholder | Screenshot placeholder | Screenshot placeholder |
+Screenshots are intentionally omitted from source control.
 
 ## Build & Release
 

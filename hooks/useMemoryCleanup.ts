@@ -25,8 +25,6 @@ export function useMemoryCleanup() {
         }
       });
       listeners.current = [];
-      
-      console.log('🧹 Memory cleanup completed');
     };
   }, []);
 

@@ -35,8 +35,6 @@ export default function ProfileScreen() {
       }
       setLoadingHistory(true);
       try {
-        console.log('🔍 Fetching repair history for user:', user?.uid);
-
         // Query repairs by user_id (more reliable than phone number matching)
         let q;
         if (user?.uid) {
@@ -75,8 +73,6 @@ export default function ProfileScreen() {
             deleted_at: d.deleted_at || null,
           } as Repair;
         });
-
-        console.log('📊 Found repairs:', data.length);
         setRepairs(data);
       } catch (error) {
         console.error('Fetch error:', error);

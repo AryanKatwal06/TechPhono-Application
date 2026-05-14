@@ -40,8 +40,6 @@ export default function RepairHistoryAdmin() {
 
   const fetchHistory = async () => {
     try {
-      console.log('🔍 Fetching repair history for admin...');
-
       const snapshot = await getDocs(collection(db, 'repairs'));
       const data = snapshot.docs
         .map(d => {
@@ -57,8 +55,6 @@ export default function RepairHistoryAdmin() {
         .filter(isHistoryRepair);
 
       sortByNewest(data);
-
-      console.log(`✅ Fetched ${data.length} history records`);
       setHistory(data);
     } catch (error: any) {
       console.error('❌ History fetch error:', error);

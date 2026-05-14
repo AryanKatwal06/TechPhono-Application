@@ -1,5 +1,6 @@
 import { Skeleton } from '@/components/Skeleton';
 import { WhatsAppFAB } from '@/components/WhatsAppFAB';
+import { SecurityConfig } from '@/config/security';
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { db } from '@/services/firebaseClient';
 import { collection, query, where, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
@@ -111,7 +112,11 @@ export default function HomeScreen() {
     };
   }, []);
 
-  const handleCall = () => Linking.openURL('tel:8527361011');
+  const handleCall = () => {
+    const phoneNumber = SecurityConfig.whatsappNumber.trim();
+    if (!phoneNumber) return;
+    Linking.openURL(`tel:${phoneNumber}`);
+  };
   const handleBookRepair = () => router.push('/booking');
   const handleTrackRepair = () => jobId.trim() && router.push(`/track-repair?jobId=${jobId}`);
   const handleService = (service: Service) => {

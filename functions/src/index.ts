@@ -12,8 +12,6 @@ const firestore = admin.firestore();
 export const syncEmailVerification = functions.pubsub
   .schedule('every 5 minutes')
   .onRun(async (context: any) => {
-    console.log('Starting email verification sync...');
-
     try {
       let nextPageToken: string | undefined = undefined;
 
@@ -35,7 +33,6 @@ export const syncEmailVerification = functions.pubsub
               const currentlyVerified = !!data.isVerified;
 
               if (!currentlyVerified) {
-                console.log(`Marking ${uid} as verified`);
                 updates.push(userRef.update({
                   isVerified: true,
                   verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -45,7 +42,6 @@ export const syncEmailVerification = functions.pubsub
               }
             } else {
               // Create minimal user doc for users missing in Firestore
-              console.log(`User doc missing for uid=${uid}, creating with isVerified=true`);
               updates.push(userRef.set({
                 email: userRecord.email || null,
                 isVerified: true,
@@ -66,8 +62,6 @@ export const syncEmailVerification = functions.pubsub
 
         nextPageToken = listUsersResult.pageToken;
       } while (nextPageToken);
-
-      console.log('Email verification sync completed');
     } catch (err) {
       console.error('Email verification sync failed:', err);
     }

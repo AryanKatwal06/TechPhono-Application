@@ -119,8 +119,6 @@ export class APKErrorHandler {
       // Reset error counters
       this.errorCount = 0;
       this.lastErrorTime = 0;
-      
-      console.log('✅ Emergency recovery completed');
     } catch (recoveryError) {
       console.error('❌ Emergency recovery failed:', recoveryError);
     }
@@ -132,7 +130,6 @@ export class APKErrorHandler {
   private static clearCorruptedStorage(): void {
     try {
       // This would be implemented with AsyncStorage.clear() if needed
-      console.log('🧹 Clearing corrupted storage...');
     } catch (error) {
       console.error('❌ Failed to clear storage:', error);
     }

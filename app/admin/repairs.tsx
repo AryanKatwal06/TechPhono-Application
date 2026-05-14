@@ -38,8 +38,6 @@ export default function RepairsList() {
 
   const fetchActiveRepairs = async () => {
     try {
-      console.log('🔍 Fetching active repairs for admin...');
-
       const snapshot = await getDocs(collection(db, 'repairs'));
       const data = snapshot.docs
         .map(d => {
@@ -54,17 +52,7 @@ export default function RepairsList() {
         })
         .filter(isActiveRepair);
 
-      console.log(`✅ Fetched ${data.length} active repairs`);
       sortByNewest(data);
-
-      if (data.length > 0) {
-        console.log('🔍 Active repairs details:', data.map((r: any) => ({
-          job_id: r.job_id,
-          name: r.name,
-          status: r.status,
-          is_deleted: r.is_deleted
-        })));
-      }
 
       setRepairs(data);
     } catch (error: any) {

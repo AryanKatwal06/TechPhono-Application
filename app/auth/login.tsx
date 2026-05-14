@@ -131,15 +131,12 @@ export default function LoginScreen() {
       }
       // Enhanced role-based redirection with fallback
       const targetIsAdmin = SecurityConfig.isAdminEmail(email);
-      console.log('🔐 Login redirect check:', { email, isAdmin: targetIsAdmin });
       
       // Add a small delay to ensure user state is updated in AuthContext
       setTimeout(() => {
         if (targetIsAdmin) {
-          console.log('👑 Redirecting admin to /admin');
           router.replace('/admin');
         } else {
-          console.log('👤 Redirecting user to /(tabs)');
           router.replace('/(tabs)');
         }
       }, 100);

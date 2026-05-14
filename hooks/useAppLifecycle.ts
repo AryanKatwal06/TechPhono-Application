@@ -15,7 +15,6 @@ export function useAppLifecycle() {
       } else if (appState.current === 'background' && 
                  nextAppState.match(/active|foreground/)) {
         // App is coming to foreground
-        console.log('📱 App coming to foreground');
       }
       
       appState.current = nextAppState;
@@ -30,8 +29,6 @@ export function useAppLifecycle() {
   }, []);
 
   const performCleanup = () => {
-    console.log('🧹 Performing app cleanup...');
-    
     // Clean up camera resources
     CameraUtils.cleanup();
     

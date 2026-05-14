@@ -25,8 +25,6 @@ export class AppStateManager {
     const previousState = this.currentState;
     this.currentState = nextAppState;
 
-    console.log(`📱 App state changed: ${previousState} → ${nextAppState}`);
-
     // Handle specific state transitions
     if (previousState.match(/active|foreground/) && nextAppState === 'background') {
       this.handleAppBackgrounded();
@@ -47,25 +45,19 @@ export class AppStateManager {
   };
 
   private handleAppBackgrounded() {
-    console.log('🌙 App going to background - performing cleanup');
     this.performCleanup();
   }
 
   private handleAppForegrounded() {
-    console.log('☀️ App coming to foreground');
   }
 
   private handleAppActive() {
-    console.log('🎯 App became active');
   }
 
   private performCleanup() {
-    console.log(`🧹 Executing ${this.cleanupTasks.length} cleanup tasks`);
-    
     this.cleanupTasks.forEach((task, index) => {
       try {
         task();
-        console.log(`✅ Cleanup task ${index} completed`);
       } catch (error) {
         console.error(`❌ Cleanup task ${index} failed:`, error);
       }

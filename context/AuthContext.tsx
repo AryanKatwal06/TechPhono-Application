@@ -51,16 +51,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Secure role-based admin check
   const isAdmin = SecurityConfig.isAdminEmail(user?.email);
-  
-  // Debug logging for admin detection
-  useEffect(() => {
-    if (user?.email) {
-      const adminCheck = SecurityConfig.isAdminEmail(user.email);
-      console.log('🔐 AuthContext - User email:', user.email);
-      console.log('👑 AuthContext - Is admin:', adminCheck);
-      console.log('🔍 AuthContext - Admin emails configured:', SecurityConfig.adminEmails);
-    }
-  }, [user?.email]);
 
   useEffect(() => {
     let mounted = true;
@@ -263,14 +253,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const webUrl = SecurityConfig.appUrl?.trim();
       
       const continueUrl = isNativeApp ? customSchemeUrl : (webUrl || customSchemeUrl);
-
-      console.log('🔐 Password Reset URL Config:', {
-        platform: Platform.OS,
-        isNativeApp,
-        customSchemeUrl,
-        webUrl: webUrl || '❌ Not set',
-        usingUrl: continueUrl,
-      });
 
       const actionCodeSettings = {
         url: continueUrl,

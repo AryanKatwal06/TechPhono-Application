@@ -1,12 +1,20 @@
 import type { CartItem } from '@/types/cart';
+import { SecurityConfig } from '@/config/security';
 import { Linking } from 'react-native';
-const ADMIN_PHONE = '918527361011';
+
+const getAdminPhone = (): string => SecurityConfig.whatsappNumber.replace(/\D/g, '');
+
 export const openWhatsAppChat = async (message?: string) => {
   try {
+    const adminPhone = getAdminPhone();
+    if (!adminPhone) {
+      throw new Error('WhatsApp contact number is not configured');
+    }
+
     const encodedMessage = message ? encodeURIComponent(message) : '';
     const url = message
-      ? `https://wa.me/${ADMIN_PHONE}?text=${encodedMessage}`
-      : `https://wa.me/${ADMIN_PHONE}`;
+      ? `https://wa.me/${adminPhone}?text=${encodedMessage}`
+      : `https://wa.me/${adminPhone}`;
     const supported = await Linking.canOpenURL(url);
     if (!supported) {
       throw new Error('WhatsApp not supported');
@@ -52,7 +60,12 @@ ${itemsText}
 💰 *Total:* ₹${total}
 📞 Please contact me regarding this order.
 `;
-    const url = `https://wa.me/${ADMIN_PHONE}?text=${encodeURIComponent(
+    const adminPhone = getAdminPhone();
+    if (!adminPhone) {
+      throw new Error('WhatsApp contact number is not configured');
+    }
+
+    const url = `https://wa.me/${adminPhone}?text=${encodeURIComponent(
       message
     )}`;
     
