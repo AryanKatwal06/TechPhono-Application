@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>TechPhono Password Reset</title>
+    <meta name="color-scheme" content="light only" />
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --card: rgba(255, 255, 255, 0.92);
+        --text: #111827;
+        --muted: #6b7280;
+        --border: #e5e7eb;
+        --primary: #4f46e5;
+        --primary-hover: #4338ca;
+        --danger: #b91c1c;
+        --success: #065f46;
+        --shadow: 0 24px 70px rgba(15, 23, 42, 0.10);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(99, 102, 241, 0.14), transparent 28%),
+          radial-gradient(circle at top right, rgba(236, 72, 153, 0.10), transparent 24%),
+          linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .shell {
+        width: 100%;
+        max-width: 560px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid rgba(229, 231, 235, 0.95);
+        border-radius: 28px;
+        box-shadow: var(--shadow);
+        padding: 30px;
+        backdrop-filter: blur(10px);
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 800;
+        font-size: 1.25rem;
+        letter-spacing: -0.02em;
+      }
+      .brand-mark {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        display: grid;
+        place-items: center;
+        color: white;
+        font-weight: 900;
+      }
+      h1 {
+        margin: 18px 0 8px;
+        font-size: clamp(1.6rem, 3vw, 2.2rem);
+        letter-spacing: -0.03em;
+      }
+      p {
+        margin: 0;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+      .stack {
+        display: grid;
+        gap: 16px;
+        margin-top: 22px;
+      }
+      .field label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 0.92rem;
+        font-weight: 700;
+      }
+      .field input {
+        width: 100%;
+        padding: 14px 15px;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: #fff;
+        font: inherit;
+        color: var(--text);
+        outline: none;
+      }
+      .field input:focus {
+        border-color: rgba(79, 70, 229, 0.5);
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.10);
+      }
+      .password-field {
+        position: relative;
+      }
+      .password-shell {
+        position: relative;
+      }
+      .password-shell input {
+        padding-right: 52px;
+      }
+      .toggle-password {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 34px;
+        height: 34px;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(79, 70, 229, 0.08);
+        color: #4338ca;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.2s ease;
+      }
+      .toggle-password:hover {
+        background: rgba(79, 70, 229, 0.14);
+      }
+      .toggle-password:active {
+        transform: scale(0.96);
+      }
+      .toggle-password svg {
+        width: 18px;
+        height: 18px;
+      }
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+      }
+      .button {
+        appearance: none;
+        border: 0;
+        border-radius: 14px;
+        padding: 13px 18px;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+      }
+      .button.primary {
+        background: var(--primary);
+        color: white;
+      }
+      .button.primary:hover { background: var(--primary-hover); }
+      .button.secondary {
+        background: #eef2ff;
+        color: #3730a3;
+      }
+      .meta {
+        margin-top: 22px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+        display: grid;
+        gap: 10px;
+      }
+      .status {
+        margin-top: 18px;
+        min-height: 24px;
+        font-weight: 600;
+      }
+      .status.error { color: var(--danger); }
+      .status.success { color: var(--success); }
+      .hidden { display: none !important; }
+      .muted { color: var(--muted); }
+      .small { font-size: 0.92rem; }
+      .loader {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255,255,255,0.6);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        vertical-align: middle;
+        margin-right: 8px;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .foot {
+        margin-top: 14px;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 18px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(79, 70, 229, 0.08);
+        color: #4338ca;
+        font-size: 0.85rem;
+        font-weight: 700;
+      }
+      .badge-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #4f46e5;
+        box-shadow: 0 0 0 6px rgba(79, 70, 229, 0.12);
+      }
+      code {
+        background: #f3f4f6;
+        padding: 2px 6px;
+        border-radius: 6px;
+        color: #374151;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="card" aria-live="polite">
+        <div class="brand">
+          <div class="brand-mark">T</div>
+          <div>TechPhono</div>
+        </div>
+
+        <h1>Reset your password</h1>
+        <p id="intro">Verifying your reset link.</p>
+        <div class="badge"><span class="badge-dot" aria-hidden="true"></span>Secure password reset</div>
+
+        <div id="resetForm" class="stack hidden">
+          <div class="field">
+            <label for="email">Email address</label>
+            <input id="email" type="email" readonly />
+          </div>
+
+          <div class="field password-field">
+            <label for="password">New password</label>
+            <div class="password-shell">
+              <input id="password" type="password" autocomplete="new-password" placeholder="Enter a new password" />
+              <button id="togglePassword" class="toggle-password" type="button" aria-label="Show password" aria-pressed="false">
+                <svg id="passwordIconShow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M2.1 12.5a1 1 0 0 1 0-1A11.4 11.4 0 0 1 12 6c4.5 0 8.4 2.4 9.9 5.5a1 1 0 0 1 0 1A11.4 11.4 0 0 1 12 18c-4.5 0-8.4-2.4-9.9-5.5Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <svg id="passwordIconHide" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 3l18 18" />
+                  <path d="M10.58 10.58A3 3 0 0 0 13.42 13.42" />
+                  <path d="M9.88 5.08A11.7 11.7 0 0 1 12 5c4.5 0 8.4 2.4 9.9 5.5a1 1 0 0 1 0 1c-.69 1.43-1.94 2.81-3.55 3.89" />
+                  <path d="M6.1 6.1C4.31 7.35 3.08 8.87 2.1 10.5a1 1 0 0 0 0 1A11.4 11.4 0 0 0 12 18c1.65 0 3.2-.28 4.6-.8" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="field password-field">
+            <label for="confirmPassword">Confirm password</label>
+            <div class="password-shell">
+              <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="Re-enter the new password" />
+              <button id="toggleConfirmPassword" class="toggle-password" type="button" aria-label="Show confirm password" aria-pressed="false">
+                <svg id="confirmPasswordIconShow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M2.1 12.5a1 1 0 0 1 0-1A11.4 11.4 0 0 1 12 6c4.5 0 8.4 2.4 9.9 5.5a1 1 0 0 1 0 1A11.4 11.4 0 0 1 12 18c-4.5 0-8.4-2.4-9.9-5.5Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <svg id="confirmPasswordIconHide" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 3l18 18" />
+                  <path d="M10.58 10.58A3 3 0 0 0 13.42 13.42" />
+                  <path d="M9.88 5.08A11.7 11.7 0 0 1 12 5c4.5 0 8.4 2.4 9.9 5.5a1 1 0 0 1 0 1c-.69 1.43-1.94 2.81-3.55 3.89" />
+                  <path d="M6.1 6.1C4.31 7.35 3.08 8.87 2.1 10.5a1 1 0 0 0 0 1A11.4 11.4 0 0 0 12 18c1.65 0 3.2-.28 4.6-.8" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button id="submitBtn" class="button primary" type="button">Reset password</button>
+          </div>
+        </div>
+
+        <div id="donePanel" class="stack hidden">
+          <div class="status success">Your password has been updated successfully.</div>
+          <p class="muted">Return to the app and sign in with your new password.</p>
+          <div class="button-row">
+            <a class="button primary" href="/">Open site</a>
+          </div>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <div class="meta">
+          <p class="small">If you opened this page from a reset email, enter a new password below. Firebase will handle the update securely in the browser.</p>
+          <p class="small">After the reset finishes, go back to the mobile app and log in normally.</p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        const API_KEY = 'AIzaSyC4ouF9Cn2MyMGjXbZyTQUSw2ifEButMKg';
+        const PROJECT_ID = 'techphono-e47ec';
+        const PASSWORD_RESET_WINDOW_MS = 5 * 60 * 1000;
+        const FUNCTION_BASE_URL = 'https://us-central1-' + PROJECT_ID + '.cloudfunctions.net';
+        const params = new URLSearchParams(window.location.search);
+        const intro = document.getElementById('intro');
+        const statusEl = document.getElementById('status');
+        const resetForm = document.getElementById('resetForm');
+        const donePanel = document.getElementById('donePanel');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const submitBtn = document.getElementById('submitBtn');
+        const togglePasswordBtn = document.getElementById('togglePassword');
+        const toggleConfirmPasswordBtn = document.getElementById('toggleConfirmPassword');
+        const passwordIconShow = document.getElementById('passwordIconShow');
+        const passwordIconHide = document.getElementById('passwordIconHide');
+        const confirmPasswordIconShow = document.getElementById('confirmPasswordIconShow');
+        const confirmPasswordIconHide = document.getElementById('confirmPasswordIconHide');
+
+        const oobCode = params.get('oobCode');
+        const mode = params.get('mode');
+
+        let resetWindowEndsAt = null;
+
+        function setStatus(message, kind) {
+          statusEl.textContent = message || '';
+          statusEl.className = 'status' + (kind ? ' ' + kind : '');
+        }
+
+        function setPasswordVisibility(input, showBtn, showIcon, hideIcon, visible) {
+          input.type = visible ? 'text' : 'password';
+          showBtn.setAttribute('aria-pressed', String(visible));
+          showBtn.setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
+          showIcon.classList.toggle('hidden', visible);
+          hideIcon.classList.toggle('hidden', !visible);
+        }
+
+        togglePasswordBtn.addEventListener('click', () => {
+          const visible = passwordInput.type === 'password';
+          setPasswordVisibility(passwordInput, togglePasswordBtn, passwordIconShow, passwordIconHide, visible);
+        });
+
+        toggleConfirmPasswordBtn.addEventListener('click', () => {
+          const visible = confirmPasswordInput.type === 'password';
+          setPasswordVisibility(confirmPasswordInput, toggleConfirmPasswordBtn, confirmPasswordIconShow, confirmPasswordIconHide, visible);
+        });
+
+        async function verifyCode() {
+          if (!oobCode) {
+            intro.textContent = 'This page needs a password reset link to continue.';
+            setStatus('Missing reset code. Please request a new password reset email.', 'error');
+            return;
+          }
+
+          if (mode && mode !== 'resetPassword') {
+            intro.textContent = 'This page was opened from a Firebase action link.';
+          }
+
+          try {
+            setStatus('Verifying link...', '');
+            
+            let firebaseData = null;
+            let firebaseError = null;
+            
+            try {
+              const response = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=' + API_KEY, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ oobCode }),
+              });
+
+              const data = await response.json().catch(() => ({ error: { message: 'Invalid response from server' } }));
+              if (!response.ok || data.error) {
+                firebaseError = data?.error?.message || 'Unable to verify the reset link with Firebase.';
+                throw new Error(firebaseError);
+              }
+              firebaseData = data;
+            } catch (err) {
+              console.error('Firebase verification error:', err);
+              throw err;
+            }
+
+            // Attempt server-side validation (preferred). If it fails due to network
+            // or other errors, fall back to the Firebase-provided email so users can
+            // still complete the reset. This keeps the UX working when functions are
+            // temporarily unreachable, but it weakens the 5-minute server-side guard.
+            let serverEmail = null;
+            try {
+              const validationResponse = await fetch(FUNCTION_BASE_URL + '/validatePasswordResetRequest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ oobCode }),
+              });
+
+              const validationData = await validationResponse.json().catch(() => ({}));
+              if (validationResponse.ok && !validationData.error && validationData.email) {
+                serverEmail = validationData.email;
+              } else {
+                console.warn('Password reset server validation failed:', validationData);
+              }
+            } catch (fnErr) {
+              console.warn('Password reset server unreachable, falling back to Firebase:', fnErr);
+              // proceed using email from identitytoolkit response
+            }
+
+            const finalEmail = serverEmail || firebaseData?.email || '';
+            emailInput.value = finalEmail;
+            resetWindowEndsAt = Date.now() + PASSWORD_RESET_WINDOW_MS;
+            intro.textContent = 'Create a new password for ' + (finalEmail || 'your account') + '.';
+            resetForm.classList.remove('hidden');
+            setStatus('Link verified. You can now choose a new password.', '');
+          } catch (error) {
+            console.error('Verification failed:', error);
+            intro.textContent = 'This password reset link is invalid or expired.';
+            setStatus(error?.message || 'Failed to fetch - Please check your connection and try again, or request a new reset email.', 'error');
+          }
+        }
+
+        async function submitReset() {
+          if (resetWindowEndsAt && Date.now() > resetWindowEndsAt) {
+            setStatus('This reset link expired after 5 minutes. Please request a new password reset email.', 'error');
+            return;
+          }
+
+          const password = passwordInput.value.trim();
+          const confirmPassword = confirmPasswordInput.value.trim();
+
+          if (!password || !confirmPassword) {
+            setStatus('Please enter and confirm your new password.', 'error');
+            return;
+          }
+          if (password.length < 6) {
+            setStatus('Password must be at least 6 characters long.', 'error');
+            return;
+          }
+          if (password !== confirmPassword) {
+            setStatus('Passwords do not match.', 'error');
+            return;
+          }
+
+          try {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="loader"></span>Resetting...';
+            setStatus('Updating password...', '');
+
+            const response = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key=' + API_KEY, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ oobCode, newPassword: password }),
+            });
+
+            const data = await response.json().catch(() => ({ error: { message: 'Failed to connect to password service' } }));
+            if (!response.ok || data.error) {
+              throw new Error(data?.error?.message || 'Unable to update the password.');
+            }
+
+            if (emailInput.value) {
+              try {
+                await fetch(FUNCTION_BASE_URL + '/consumePasswordResetRequest', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email: emailInput.value }),
+                });
+              } catch (consumeError) {
+                console.warn('Unable to consume password reset request:', consumeError);
+              }
+            }
+
+            resetForm.classList.add('hidden');
+            donePanel.classList.remove('hidden');
+            setStatus('', '');
+          } catch (error) {
+            console.error('Password reset error:', error);
+            setStatus(error?.message || 'Unable to update the password. Please check your connection and try again.', 'error');
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Reset password';
+          }
+        }
+
+        submitBtn.addEventListener('click', submitReset);
+        passwordInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') submitReset();
+        });
+        confirmPasswordInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') submitReset();
+        });
+
+        verifyCode();
+      })();
+    </script>
+  </body>
+</html>

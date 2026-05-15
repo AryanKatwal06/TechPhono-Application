@@ -8,7 +8,7 @@ import {
   onSnapshot,
   Timestamp,
 } from 'firebase/firestore';
-import { ArrowLeft, Archive, CheckCircle2, ChevronRight, Clock3, TriangleAlert, UserRound } from 'lucide-react-native';
+import { ArrowLeft, Archive, CheckCircle2, TriangleAlert, UserRound } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from '@/navigation/router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {

@@ -4,6 +4,28 @@ import { Linking } from 'react-native';
 
 const getAdminPhone = (): string => SecurityConfig.whatsappNumber.replace(/\D/g, '');
 
+const buildWhatsAppUrls = (phone: string, message?: string) => {
+  const encodedMessage = message ? encodeURIComponent(message) : '';
+  const appUrl = message
+    ? `whatsapp://send?phone=${phone}&text=${encodedMessage}`
+    : `whatsapp://send?phone=${phone}`;
+  const webUrl = message
+    ? `https://wa.me/${phone}?text=${encodedMessage}`
+    : `https://wa.me/${phone}`;
+
+  return { appUrl, webUrl };
+};
+
+const openWhatsAppUrl = async (phone: string, message?: string) => {
+  const { appUrl, webUrl } = buildWhatsAppUrls(phone, message);
+
+  try {
+    await Linking.openURL(appUrl);
+  } catch {
+    await Linking.openURL(webUrl);
+  }
+};
+
 export const openWhatsAppChat = async (message?: string) => {
   try {
     const adminPhone = getAdminPhone();
@@ -11,15 +33,7 @@ export const openWhatsAppChat = async (message?: string) => {
       throw new Error('WhatsApp contact number is not configured');
     }
 
-    const encodedMessage = message ? encodeURIComponent(message) : '';
-    const url = message
-      ? `https://wa.me/${adminPhone}?text=${encodedMessage}`
-      : `https://wa.me/${adminPhone}`;
-    const supported = await Linking.canOpenURL(url);
-    if (!supported) {
-      throw new Error('WhatsApp not supported');
-    }
-    await Linking.openURL(url);
+    await openWhatsAppUrl(adminPhone, message);
   } catch (error) {
     console.error('Failed to open WhatsApp:', error);
     throw error;
@@ -65,15 +79,7 @@ ${itemsText}
       throw new Error('WhatsApp contact number is not configured');
     }
 
-    const url = `https://wa.me/${adminPhone}?text=${encodeURIComponent(
-      message
-    )}`;
-    
-    const supported = await Linking.canOpenURL(url);
-    if (!supported) {
-      throw new Error('WhatsApp not supported');
-    }
-    await Linking.openURL(url);
+    await openWhatsAppUrl(adminPhone, message);
   } catch (error) {
     console.error('Failed to send cart to WhatsApp:', error);
     throw error;

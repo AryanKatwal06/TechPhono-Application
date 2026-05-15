@@ -8,11 +8,7 @@ export default function SplashScreen() {
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const [imageError, setImageError] = useState(false);
-  const dotAnims = useRef([
-    new Animated.Value(1),
-    new Animated.Value(1),
-    new Animated.Value(1)
-  ]).current;
+  const dotAnims = useRef(Array.from({ length: 3 }, () => new Animated.Value(1))).current;
 
   useEffect(() => {
     let isMounted = true;
@@ -22,23 +18,12 @@ export default function SplashScreen() {
     let slideAnimation: Animated.CompositeAnimation | null = null;
     
     try {
-      // Professional logo entrance animation with smooth scaling
       logoAnimation = Animated.sequence([
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        })
+        Animated.timing(scaleAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
       ]);
 
-      // Fade in animation
-      fadeAnimation = Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      });
+      fadeAnimation = Animated.timing(fadeAnim, { toValue: 1, duration: 1000, useNativeDriver: true });
 
-      // Text slide up animation
       slideAnimation = Animated.timing(slideAnim, {
         toValue: 0,
         duration: 700,
@@ -46,46 +31,27 @@ export default function SplashScreen() {
         useNativeDriver: true,
       });
 
-      // Loading dots animation with proper cleanup
-      dotsAnimation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(dotAnims[0], { toValue: 1.5, duration: 400, useNativeDriver: true }),
-          Animated.timing(dotAnims[0], { toValue: 1, duration: 400, useNativeDriver: true }),
-          Animated.timing(dotAnims[1], { toValue: 1.5, duration: 400, useNativeDriver: true }),
-          Animated.timing(dotAnims[1], { toValue: 1, duration: 400, useNativeDriver: true }),
-          Animated.timing(dotAnims[2], { toValue: 1.5, duration: 400, useNativeDriver: true }),
-          Animated.timing(dotAnims[2], { toValue: 1, duration: 400, useNativeDriver: true }),
-        ])
-      );
+      // Loading dots animation
+      const dotSequence = [] as Animated.CompositeAnimation[];
+      dotAnims.forEach((d) => {
+        dotSequence.push(Animated.timing(d, { toValue: 1.5, duration: 400, useNativeDriver: true }));
+        dotSequence.push(Animated.timing(d, { toValue: 1, duration: 400, useNativeDriver: true }));
+      });
+      dotsAnimation = Animated.loop(Animated.sequence(dotSequence));
 
-      // Start all animations
-      if (isMounted) {
-        Animated.parallel([
-          logoAnimation,
-          fadeAnimation,
-          slideAnimation
-        ]).start();
-
-        dotsAnimation.start();
-      }
+      // Start animations
+      Animated.parallel([logoAnimation, fadeAnimation, slideAnimation]).start();
+      dotsAnimation.start();
 
       return () => {
-        isMounted = false;
-        // Proper cleanup with error handling
-        try {
-          logoAnimation?.stop();
-          fadeAnimation?.stop();
-          slideAnimation?.stop();
-          dotsAnimation?.stop();
-        } catch (cleanupError) {
-          console.warn('⚠️ Animation cleanup error:', cleanupError);
-        }
+        // cleanup
+        logoAnimation?.stop();
+        fadeAnimation?.stop();
+        slideAnimation?.stop();
+        dotsAnimation?.stop();
       };
     } catch (error) {
-      console.error('❌ Splash screen animation error:', error);
-      return () => {
-        isMounted = false;
-      };
+      console.error('Splash screen animation error:', error);
     }
   }, [fadeAnim, scaleAnim, slideAnim, dotAnims]);
 

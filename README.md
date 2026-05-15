@@ -194,7 +194,6 @@ Runtime configuration is read from `config/publicConfig.ts` and exposed through 
 | `appName` | Application display name |
 | `supportEmail` | Support contact configuration |
 | `whatsappNumber` | WhatsApp support and order routing |
-| `appUrl` | Firebase password-reset action links |
 | `devMode` | Development behavior flags |
 | `debugMode` | Validation and config checks |
 
@@ -222,7 +221,7 @@ Runtime configuration is read from `config/publicConfig.ts` and exposed through 
 6. Repair tracking queries Firestore by `job_id` and listens with `onSnapshot` so the status view updates in real time.
 7. The shop reads active Firestore `items`, stores the cart locally in AsyncStorage, and sends checkout details to WhatsApp.
 8. The admin area reads and updates Firestore collections directly for repairs, items, and services.
-9. Password reset uses Firebase action links, a deep-link callback screen, and the reset-password screen to finish the flow.
+9. Password reset uses Firebase Auth action links that open in the browser, where the user can verify the link, set a new password, and then return to the app to sign in.
 
 ### Data flow
 

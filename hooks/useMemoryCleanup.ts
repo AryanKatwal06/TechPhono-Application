@@ -21,7 +21,7 @@ export function useMemoryCleanup() {
         try {
           listener();
         } catch (error) {
-          console.error('❌ Error removing listener:', error);
+          console.error('Error removing listener:', error);
         }
       });
       listeners.current = [];

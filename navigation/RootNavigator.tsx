@@ -17,7 +17,6 @@ import SplashEntry from '@/app/index';
 import LoginScreen from '@/app/auth/login';
 import RegisterScreen from '@/app/auth/register';
 import ForgotPasswordScreen from '@/app/auth/forgot-password';
-import AuthCallbackScreen from '@/app/auth/callback';
 import ResetPasswordScreen from '@/app/reset-password';
 import BookingScreen from '@/app/booking';
 import TrackRepairScreen from '@/app/track-repair';
@@ -37,15 +36,14 @@ import CartTabScreen from '@/app/(tabs)/cart';
 const RootStack = createNativeStackNavigator();
 const Tabs = createBottomTabNavigator();
 
-const linking: LinkingOptions<any> = {
-  prefixes: ['techphono://', 'https://techphono-e47ec.web.app'],
+  const linking: LinkingOptions<any> = {
+  prefixes: ['techphono://'],
   config: {
     screens: {
       [RouteNames.splash]: '',
       [RouteNames.authLogin]: 'auth/login',
       [RouteNames.authRegister]: 'auth/register',
       [RouteNames.authForgotPassword]: 'auth/forgot-password',
-      [RouteNames.authCallback]: 'auth/callback',
       [RouteNames.resetPassword]: 'reset-password',
       [RouteNames.mainTabs]: {
         screens: {
@@ -216,7 +214,6 @@ export default function RootNavigator() {
         <RootStack.Screen name={RouteNames.authLogin} component={LoginScreen} />
         <RootStack.Screen name={RouteNames.authRegister} component={RegisterScreen} />
         <RootStack.Screen name={RouteNames.authForgotPassword} component={ForgotPasswordScreen} />
-        <RootStack.Screen name={RouteNames.authCallback} component={AuthCallbackScreen} />
         <RootStack.Screen name={RouteNames.resetPassword} component={ResetPasswordScreen} />
         <RootStack.Screen name={RouteNames.mainTabs} component={TabsNavigator} />
         <RootStack.Screen name={RouteNames.booking} component={BookingScreen} />

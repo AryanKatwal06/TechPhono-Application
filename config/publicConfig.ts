@@ -14,7 +14,6 @@ export const PUBLIC_CONFIG = {
   appName: 'TechPhono Repair App',
   supportEmail: 'support@techphono.com',
   whatsappNumber: '',
-  appUrl: '',
   devMode: 'false',
   debugMode: 'false',
 } as const;

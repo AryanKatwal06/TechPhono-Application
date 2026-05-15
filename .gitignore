@@ -1,6 +1,6 @@
-# TechPhono - final React Native CLI ignore list
+# TechPhono - comprehensive React Native / Expo .gitignore
 
-# Dependencies
+# Node
 node_modules/
 
 # Environment and local config
@@ -10,28 +10,32 @@ node_modules/
 config/publicConfig.local.ts
 .firebaserc
 
-# React Native / Metro / cache
+# Expo / React Native caches and build artifacts
+.expo/
+.expo-shared/
+.expo/packager-cache-*
+.expo/web/
+.cache/
+.parcel-cache/
 .metro-cache/
 .metro-health-check*
-.parcel-cache/
-.expo/
-.cache/
 .tmp/
-.temp/
 tmp/
-temp/
 *.tsbuildinfo
 *.jsbundle
 *.hbc
 
-# Logs and reports
-*.log
+# Metro/Expo autolinking noisy build folders (Windows watcher fixes)
+node_modules/expo-modules-autolinking/**/build/**
+
+# Logs and coverage
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 .nyc_output/
 reports/
+coverage/
 
 # Android
 android/.gradle/
@@ -40,12 +44,13 @@ android/build/
 android/app/build/
 android/local.properties
 android/*/local.properties
-android/app/google-services.json
+android/app/src/main/assets/index.android.bundle
+android/keystore.properties
+keystore.properties
 *.apk
 *.aab
 *.jks
 *.keystore
-*.keystore.*
 
 # iOS
 ios/build/
@@ -53,14 +58,16 @@ ios/Pods/
 Pods/
 DerivedData/
 *.xcworkspace
-**/GoogleService-Info.plist
+*.xcuserstate
+*.xcarchive
+*.ipa
+*.dSYM
 
 # Firebase / backend
 .firebase/
 firebase-debug.log
 firestore-debug.log
 functions/lib/
-functions/**/*.tsbuildinfo
 service-account*.json
 *-credentials.json
 
@@ -72,6 +79,11 @@ service-account*.json
 *.mobileprovision
 *.secret
 *.enc
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
 
 # IDEs and editors
 .vscode/
@@ -87,16 +99,16 @@ service-account*.json
 Thumbs.db
 Desktop.ini
 
-# Repo-local cleanup helpers
+# Misc build / temp
+.gradle/
+build/
+dist/
+uploads/
+*.bak
+*.orig
+*.tmp
+
+# Repo-local helpers
 check.js
 cleaned-check/
 repo-mirror/
-
-# Package manager extras
-.pnp.cjs
-.pnp.js
-.store/
-
-# Gradle
-.gradle/
-.gradle

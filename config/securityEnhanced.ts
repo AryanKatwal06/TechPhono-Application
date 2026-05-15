@@ -53,7 +53,7 @@ export class SecurityEnhanced {
       const bytes = encoder.encode(encrypted);
       return base64Encode(Uint8Array.from(bytes).buffer);
     } catch (error) {
-      console.error('❌ Encryption failed:', error);
+      console.error('Encryption failed:', error);
       throw new Error('Encryption failed');
     }
   }
@@ -65,7 +65,7 @@ export class SecurityEnhanced {
       const decrypted = await this.simpleXOREncrypt(decoded, key);
       return decrypted;
     } catch (error) {
-      console.error('❌ Decryption failed:', error);
+      console.error('Decryption failed:', error);
       throw new Error('Decryption failed');
     }
   }
@@ -85,7 +85,7 @@ export class SecurityEnhanced {
       }
       return key;
     } catch (error) {
-      console.error('❌ Failed to get/create encryption key:', error);
+      console.error('Failed to get/create encryption key:', error);
       return createRandomId(); // Fallback
     }
   }
@@ -122,7 +122,7 @@ export class SecurityEnhanced {
 
       return { allowed: true };
     } catch (error) {
-      console.error('❌ Rate limit check failed:', error);
+      console.error('Rate limit check failed:', error);
       return { allowed: true }; // Fail open for security
     }
   }
@@ -161,7 +161,7 @@ export class SecurityEnhanced {
         await this.triggerSecurityAlert(logEntry);
       }
     } catch (error) {
-      console.error('❌ Security logging failed:', error);
+      console.error('Security logging failed:', error);
     }
   }
 
@@ -189,7 +189,7 @@ export class SecurityEnhanced {
 
   private static async triggerSecurityAlert(event: any): Promise<void> {
     // In production, send to security monitoring service
-    console.warn('🚨 CRITICAL SECURITY EVENT:', event);
+    console.warn('CRITICAL SECURITY EVENT:', event);
   }
 
   // Input sanitization with XSS protection

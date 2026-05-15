@@ -1,25 +1,23 @@
 import AppLogo from '@/components/AppLogo';
-import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
+import { borderRadius, colors, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useAlert } from '@/context/AlertContext';
 import { ValidationUtils } from '@/utils/validation';
 import { useRouter } from '@/navigation/router';
 import { Haptics } from '@/utils/haptics';
-import { ArrowLeft } from 'lucide-react-native';
+// lucide icons removed (unused)
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  BackHandler,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
   Dimensions,
-  ImageBackground,
+  
 } from 'react-native';
 import AuthFeedback from '@/components/AuthFeedback';
 import LinearGradient from 'react-native-linear-gradient';
@@ -138,7 +136,7 @@ export default function ForgotPassword() {
       if (Platform.OS !== 'web') {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      alert.success('Success', 'A password reset email has been sent to you.');
+      alert.success('Success', 'A password reset email has been sent to you. The link expires in 5 minutes and can only be used once.');
       setTimeout(() => {
         router.replace('/auth/login');
       }, 1000);

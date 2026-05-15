@@ -9,7 +9,7 @@ export default function Index() {
   const { user, loading, isAdmin } = useAuth();
   const router = useRouter();
   const [showSplash, setShowSplash] = useState(true);
-  const navigationAttempted = useState(false)[1];
+  
 
   useEffect(() => {
     const checkAndNavigate = async () => {
@@ -37,13 +37,13 @@ export default function Index() {
               await AsyncStorage.setItem('hasSeenSplash', 'true');
               setShowSplash(false);
             } catch (error) {
-              console.error('❌ Navigation error in index:', error);
+              console.error('Navigation error in index:', error);
             }
           }, 1000); // Reduced to 1 second since user finds 3 seconds irritating
           return () => clearTimeout(timer);
         }
       } catch (error) {
-        console.error('❌ AsyncStorage error:', error);
+        console.error('AsyncStorage error:', error);
         // Fallback to immediate navigation if AsyncStorage fails
         if (user) {
           router.replace(isAdmin ? '/admin' : '/(tabs)');
@@ -61,7 +61,7 @@ export default function Index() {
   useEffect(() => {
     const timeoutTimer = setTimeout(() => {
       if (showSplash) {
-        console.warn('⚠️ Splash screen timeout - forcing navigation');
+      console.warn('Splash screen timeout - forcing navigation');
         if (user) {
           router.replace(isAdmin ? '/admin' : '/(tabs)');
         } else {

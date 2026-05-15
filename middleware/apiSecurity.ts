@@ -109,7 +109,7 @@ export class APISecurity {
 
       return true;
     } catch (error) {
-      console.error('❌ CSRF validation error:', error);
+      console.error('CSRF validation error:', error);
       return false;
     }
   }

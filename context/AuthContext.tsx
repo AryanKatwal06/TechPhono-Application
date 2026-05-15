@@ -13,12 +13,12 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
 import { Linking } from 'react-native';
 import { auth, db } from '../services/firebaseClient';
 import { SecurityConfig } from '../config/security';
 import { ValidationUtils, RateLimitUtils } from '../utils/validation';
 import { SessionManager } from '../utils/sessionManager';
+import { recordPasswordResetRequest } from '@/services/passwordReset';
 
 type AuthContextType = {
   user: User | null;
@@ -52,11 +52,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Secure role-based admin check
   const isAdmin = SecurityConfig.isAdminEmail(user?.email);
 
+  const logAuthStep = (step: string, details?: Record<string, unknown>) => {
+    console.log(`[Auth] ${step}`, details || {});
+  };
+
   useEffect(() => {
     let mounted = true;
 
+    logAuthStep('subscribing to auth state changes');
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (!mounted) return;
+      logAuthStep('auth state changed', {
+        user: firebaseUser ? firebaseUser.email : null,
+        uid: firebaseUser?.uid || null,
+        isAdmin: SecurityConfig.isAdminEmail(firebaseUser?.email),
+      });
       setUser(firebaseUser);
       setLoading(false);
     });
@@ -74,6 +85,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     name?: string
   ) => {
     try {
+      logAuthStep('signup started', {
+        email: email.trim().toLowerCase(),
+        hasPhone: Boolean(phone),
+        hasName: Boolean(name),
+      });
+
       // Validate form data
       const validation = ValidationUtils.validateRegistrationForm({
         email,
@@ -83,6 +100,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (!validation.isValid) {
+        logAuthStep('signup validation failed', { errors: validation.errors });
         const firstError = Object.values(validation.errors)[0];
         return { success: false, error: firstError[0] };
       }
@@ -91,9 +109,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const cleanName = name ? ValidationUtils.sanitizeInput(name) : undefined;
       const cleanPhone = phone ? phone.replace(/\D/g, '') : undefined;
 
+      logAuthStep('creating firebase user', { email: cleanEmail });
+
       const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
 
       if (!userCredential.user) {
+        logAuthStep('signup returned no user credential', { email: cleanEmail });
         return {
           success: false,
           error: 'Signup succeeded but user was not returned. Please try again.',
@@ -106,6 +127,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           displayName: cleanName,
         });
       }
+
+      logAuthStep('storing signup profile', { uid: userCredential.user.uid });
 
       // Store additional user data in Firestore
       // Note: isVerified is set to true immediately - no email verification required
@@ -121,9 +144,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         updatedAt: serverTimestamp(),
       });
 
+      logAuthStep('signup completed', { uid: userCredential.user.uid });
+
       return { success: true };
     } catch (err: any) {
-        console.error('❌ Unexpected signup error:', err?.code, err?.message || err);
+        console.error('Unexpected signup error:', err?.code, err?.message || err);
+        logAuthStep('signup failed', { code: err?.code, message: err?.message });
         // Map Firebase error codes (or messages containing the code) to user-friendly messages
         const errorMessage = mapFirebaseAuthError(err?.code || err?.message) || err?.message || 'Unexpected error';
         return { success: false, error: errorMessage };
@@ -132,21 +158,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
+      logAuthStep('sign-in started', {
+        email: email.trim().toLowerCase(),
+        hasPassword: Boolean(password?.trim()),
+      });
+
       // Input validation
       if (!ValidationUtils.isValidEmail(email)) {
+        logAuthStep('sign-in validation failed', { reason: 'invalid-email' });
         return 'Please enter a valid email address';
       }
 
       if (!password || !password.trim()) {
+        logAuthStep('sign-in validation failed', { reason: 'missing-password' });
         return 'Please enter your password';
       }
 
       const cleanEmail = email.trim().toLowerCase();
+      logAuthStep('sign-in input normalized', { email: cleanEmail });
 
       // Rate limiting check
       if (RateLimitUtils.isRateLimited(cleanEmail, SecurityConfig.maxLoginAttempts, SecurityConfig.lockoutDurationMinutes * 60 * 1000)) {
         const remainingTime = RateLimitUtils.getLockoutTimeRemaining(cleanEmail, SecurityConfig.lockoutDurationMinutes * 60 * 1000);
         const minutes = Math.ceil(remainingTime / (60 * 1000));
+        logAuthStep('sign-in blocked by local rate limit', { email: cleanEmail, minutes });
         return `Too many failed attempts. Please try again in ${minutes} minutes.`;
       }
 
@@ -155,18 +190,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (isLockedOut) {
         const lockoutTime = await SessionManager.getLockoutTimeRemaining(cleanEmail);
         const minutes = Math.ceil(lockoutTime / (60 * 1000));
+        logAuthStep('sign-in blocked by session lockout', { email: cleanEmail, minutes });
         return `Account is temporarily locked. Please try again in ${minutes} minutes.`;
       }
 
       // Log login attempt
+      logAuthStep('recording login attempt', { email: cleanEmail });
       await SessionManager.logSecurityEvent({
         type: 'login_attempt',
         identifier: cleanEmail
       });
 
+      logAuthStep('calling firebase sign-in', { email: cleanEmail });
       const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
 
       if (!userCredential.user) {
+        logAuthStep('firebase sign-in returned no user', { email: cleanEmail });
         await SessionManager.logSecurityEvent({
           type: 'login_failure',
           identifier: cleanEmail,
@@ -176,6 +215,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       // Successful login
+      logAuthStep('firebase sign-in successful', { uid: userCredential.user.uid, email: cleanEmail });
       await SessionManager.logSecurityEvent({
         type: 'login_success',
         identifier: cleanEmail
@@ -188,9 +228,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Create session
       await SessionManager.createSession(userCredential.user.uid);
 
+      logAuthStep('session created', { uid: userCredential.user.uid });
+
       return null;
     } catch (err: any) {
       const cleanEmail = email.trim().toLowerCase();
+
+      logAuthStep('sign-in failed', {
+        email: cleanEmail,
+        code: err?.code,
+        message: err?.message,
+      });
 
       await SessionManager.logSecurityEvent({
         type: 'login_failure',
@@ -205,9 +253,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Map Firebase error codes to user-friendly messages
       const errorMessage = mapFirebaseAuthError(err.code);
-      if (errorMessage) return errorMessage;
+      if (errorMessage) {
+        logAuthStep('sign-in mapped firebase error', { email: cleanEmail, message: errorMessage });
+        return errorMessage;
+      }
 
-      console.error('🔴 Login error:', err.message);
+      console.error('Login error:', err.message);
       return err.message || 'An unexpected error occurred during sign in.';
     }
   };
@@ -234,44 +285,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const handleSignOut = async () => {
     try {
+      logAuthStep('sign-out started', { uid: auth.currentUser?.uid || null });
       await SessionManager.clearSession();
       await firebaseSignOut(auth);
+      logAuthStep('sign-out completed');
     } catch (error) {
-      console.error('❌ Error during sign out:', error);
+      console.error('Error during sign out:', error);
     }
   };
 
   const resetPassword = async (email: string) => {
     try {
       const cleanEmail = email.trim().toLowerCase();
+      logAuthStep('password reset started', { email: cleanEmail });
       if (!ValidationUtils.isValidEmail(cleanEmail)) {
         return 'Please enter a valid email address.';
       }
 
-      const isNativeApp = Platform.OS !== 'web';
-      const customSchemeUrl = 'techphono://auth/callback';
-      const webUrl = SecurityConfig.appUrl?.trim();
-      
-      const continueUrl = isNativeApp ? customSchemeUrl : (webUrl || customSchemeUrl);
+      const trackingError = await recordPasswordResetRequest(cleanEmail);
+      if (trackingError) {
+        logAuthStep('password reset tracking failed', { email: cleanEmail, error: trackingError });
+        return trackingError;
+      }
 
-      const actionCodeSettings = {
-        url: continueUrl,
-        handleCodeInApp: true,
-        android: {
-          packageName: 'com.techphono.repair',
-          installApp: true,
-          minimumVersion: '1',
-        },
-        iOS: {
-          bundleId: 'com.techphono.repair',
-        },
-      } as any;
+      // Send default Firebase password reset email that opens in the browser.
+      // Do not set custom actionCodeSettings to avoid redirecting back into the app.
+      await sendPasswordResetEmail(auth, cleanEmail);
 
-      await sendPasswordResetEmail(auth, cleanEmail, actionCodeSettings);
+      logAuthStep('password reset email sent', { email: cleanEmail });
 
       return null;
     } catch (err: any) {
-      console.error('❌ Reset password error:', err);
+      console.error('Reset password error:', err);
+      logAuthStep('password reset failed', { code: err?.code, message: err?.message });
       const errorMessage = mapFirebaseAuthError(err.code);
       if (errorMessage) return errorMessage;
       return err.message || 'Unexpected error';
@@ -283,10 +329,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!auth.currentUser) {
         return 'No user logged in';
       }
+      logAuthStep('password update started', { uid: auth.currentUser.uid });
       await firebaseUpdatePassword(auth.currentUser, password);
+      logAuthStep('password update completed', { uid: auth.currentUser.uid });
       return null;
     } catch (err: any) {
-      console.error('❌ Update password error:', err);
+      console.error('Update password error:', err);
+      logAuthStep('password update failed', { code: err?.code, message: err?.message });
       const errorMessage = mapFirebaseAuthError(err.code);
       if (errorMessage) return errorMessage;
       return err.message || 'Failed to update password';
@@ -298,10 +347,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!auth.currentUser) throw new Error('No user logged in');
 
       // Firebase allows client-side deletion if user recently authenticated
+      logAuthStep('delete account started', { uid: auth.currentUser.uid });
       await firebaseDeleteUser(auth.currentUser);
       await SessionManager.clearSession();
+      logAuthStep('delete account completed');
     } catch (err: any) {
-      console.error('❌ Delete account error:', err);
+      console.error('Delete account error:', err);
+      logAuthStep('delete account failed', { code: err?.code, message: err?.message });
       // If requires-recent-login, inform the user
       if (err.code === 'auth/requires-recent-login') {
         throw new Error('Please sign in again before deleting your account for security verification.');

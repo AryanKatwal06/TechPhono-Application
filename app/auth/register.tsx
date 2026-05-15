@@ -1,24 +1,22 @@
 import AppLogo from '@/components/AppLogo';
-import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
+import { borderRadius, colors, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useAlert } from '@/context/AlertContext';
 import { Haptics } from '@/utils/haptics';
 import { useRouter } from '@/navigation/router';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  BackHandler,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
   Dimensions,
-  ImageBackground,
+  
 } from 'react-native';
 import AuthFeedback from '@/components/AuthFeedback';
 import LinearGradient from 'react-native-linear-gradient';

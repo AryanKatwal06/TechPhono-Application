@@ -81,21 +81,18 @@ export default function TrackRepairScreen() {
       return;
     }
 
-    }
-
     setLoading(true);
     setError('');
 
-
+    try {
       const q = query(
         collection(db, 'repairs'),
         where('job_id', '==', searchId)
       );
       const snapshot = await getDocs(q);
 
-
       if (snapshot.empty) {
-        console.warn('⚠️ No data found for Job ID:', searchId);
+        console.warn('No data found for Job ID:', searchId);
         setError('Job ID not found. Please check and try again.');
         alert.error('Not Found', 'Invalid Job ID');
       } else {
@@ -103,13 +100,13 @@ export default function TrackRepairScreen() {
         setRepair(repairData);
       }
     } catch (err: any) {
-      console.error('💥 Unexpected error:', err);
+      console.error('Unexpected error:', err);
       setError(err.message || 'An unexpected error occurred.');
       alert.error('Error', err.message || 'Failed to fetch repair details');
     } finally {
       setLoading(false);
     }
-  }, [jobId, params.jobId]);
+  }, [jobId, params.jobId, alert]);
 
   // Effect to handle initial job ID from params or state — run whenever `jobId` changes
   useEffect(() => {
@@ -137,7 +134,7 @@ export default function TrackRepairScreen() {
         }
       });
     }, (error) => {
-      console.error('💥 Real-time listener error:', error);
+      console.error('Real-time listener error:', error);
     });
 
     return () => {
@@ -187,7 +184,7 @@ export default function TrackRepairScreen() {
               alert.success('Success', 'Repair request cancelled successfully');
               router.back();
             } catch (error: any) {
-              console.error('💥 Failed to cancel repair:', error);
+              console.error('Failed to cancel repair:', error);
               
               let errorMessage = 'Failed to cancel request';
               if (error.code === 'permission-denied') {

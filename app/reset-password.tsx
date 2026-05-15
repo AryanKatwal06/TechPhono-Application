@@ -2,17 +2,16 @@ import AppLogo from '@/components/AppLogo';
 import AuthFeedback from '@/components/AuthFeedback';
 import { borderRadius, colors, spacing } from '@/constants/theme';
 import { auth } from '@/services/firebaseClient';
-import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
+import { confirmPasswordReset } from 'firebase/auth';
 import { useLocalSearchParams, useRouter } from '@/navigation/router';
 import { Eye, EyeOff } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
+  
   StyleSheet,
   Text,
   TextInput,
@@ -20,6 +19,7 @@ import {
   View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { PASSWORD_RESET_WINDOW_MS, consumePasswordResetRequest, validatePasswordResetLink } from '@/services/passwordReset';
 
 const getResponsiveValues = () => {
   const { width } = Dimensions.get('window');
@@ -70,6 +70,7 @@ export default function ResetPasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(true);
   const [error, setError] = useState('');
+  const [resetWindowEndsAt, setResetWindowEndsAt] = useState<number | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -102,18 +103,17 @@ export default function ResetPasswordScreen() {
       }
 
       try {
-        const accountEmail = await verifyPasswordResetCode(auth, oobCode);
+        const { email: accountEmail } = await validatePasswordResetLink(oobCode);
         if (!active) return;
 
         setEmail(accountEmail);
+        setResetWindowEndsAt(Date.now() + PASSWORD_RESET_WINDOW_MS);
         setError('');
       } catch (err: any) {
         if (!active) return;
 
         setError(
-          err?.code === 'auth/expired-action-code' || err?.code === 'auth/invalid-action-code'
-            ? 'This reset link is no longer valid. Please request a new password reset email.'
-            : err?.message || 'Unable to verify this reset link.'
+          err?.message || 'This reset link has expired. Please request a new password reset email.'
         );
       } finally {
         if (active) {
@@ -132,6 +132,11 @@ export default function ResetPasswordScreen() {
   const handleUpdatePassword = async () => {
     if (!oobCode) {
       setError('Missing password reset code. Please request a new link.');
+      return;
+    }
+
+    if (resetWindowEndsAt && Date.now() > resetWindowEndsAt) {
+      setError('This reset link expired after 5 minutes. Please request a new password reset email.');
       return;
     }
 
@@ -155,6 +160,13 @@ export default function ResetPasswordScreen() {
 
     try {
       await confirmPasswordReset(auth, oobCode, password);
+      if (email) {
+        try {
+          await consumePasswordResetRequest(email);
+        } catch (consumeError) {
+          console.warn('Unable to consume password reset request:', consumeError);
+        }
+      }
       router.replace('/auth/login');
     } catch (err: any) {
       setError(
@@ -196,6 +208,7 @@ export default function ResetPasswordScreen() {
               <View style={styles.formContainer}>
                 <Text style={[styles.title, { fontSize: typography_val.h2, marginBottom: spacing_val.sm }]}>Reset Password</Text>
                 <Text style={[styles.subtitle, { fontSize: typography_val.bodySmall, marginBottom: spacing_val.lg }]}>Create a new password to continue</Text>
+                  <Text style={[styles.subtitle, { fontSize: typography_val.bodySmall, marginBottom: spacing_val.md }]}>This link expires 5 minutes after it is sent and can only be used once.</Text>
 
                 <View style={styles.form}>
                   <Text style={[styles.label, { fontSize: typography_val.label, marginBottom: spacing_val.sm }]}>Email Address</Text>
@@ -243,7 +256,13 @@ export default function ResetPasswordScreen() {
                       autoCapitalize="none"
                       autoCorrect={false}
                     />
-                    <TouchableOpacity onPress={() => setPasswordVisible(!passwordVisible)} style={[styles.eyeButton, { padding: spacing_val.sm }]}>
+                    <TouchableOpacity
+                      onPress={() => setPasswordVisible(!passwordVisible)}
+                      style={[styles.eyeButton, { padding: spacing_val.sm }]}
+                      accessibilityRole="button"
+                      accessibilityLabel={passwordVisible ? 'Hide new password' : 'Show new password'}
+                      hitSlop={8}
+                    >
                       {passwordVisible ? (
                         <EyeOff size={componentSizes.iconMd} color={colors.textSecondary} />
                       ) : (
@@ -278,7 +297,13 @@ export default function ResetPasswordScreen() {
                       autoCapitalize="none"
                       autoCorrect={false}
                     />
-                    <TouchableOpacity onPress={() => setConfirmPasswordVisible(!confirmPasswordVisible)} style={[styles.eyeButton, { padding: spacing_val.sm }]}>
+                    <TouchableOpacity
+                      onPress={() => setConfirmPasswordVisible(!confirmPasswordVisible)}
+                      style={[styles.eyeButton, { padding: spacing_val.sm }]}
+                      accessibilityRole="button"
+                      accessibilityLabel={confirmPasswordVisible ? 'Hide confirm password' : 'Show confirm password'}
+                      hitSlop={8}
+                    >
                       {confirmPasswordVisible ? (
                         <EyeOff size={componentSizes.iconMd} color={colors.textSecondary} />
                       ) : (
@@ -393,7 +418,10 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.text,
   },
-  eyeButton: {},
+  eyeButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   errorText: { color: colors.danger },
   button: {
     backgroundColor: '#6366f1',

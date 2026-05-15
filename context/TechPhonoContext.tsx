@@ -136,7 +136,7 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
                 setCart(JSON.parse(stored));
             }
         } catch (err) {
-            console.error('❌ Cart load failed:', err);
+            console.error('Cart load failed:', err);
         } finally {
             setReady(true);
         }
@@ -154,7 +154,7 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
                 JSON.stringify(nextCart)
             );
         } catch (err) {
-            console.error('❌ Cart save failed:', err);
+            console.error('Cart save failed:', err);
         }
     };
 
@@ -251,7 +251,7 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
             });
             return { success: true, jobId };
         } catch (err: any) {
-            console.error('❌ Create repair failed:', err);
+            console.error('Create repair failed:', err);
             return { success: false, error: err.message || 'Failed to create repair' };
         }
     };
@@ -310,7 +310,7 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
             });
             return { success: true };
         } catch (error: any) {
-            console.error('❌ Update status failed:', error);
+            console.error('Update status failed:', error);
             return { success: false, error: 'Failed to update status' };
         }
     };
@@ -323,7 +323,7 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
             });
             return { success: true };
         } catch (error: any) {
-            console.error('❌ Update notes failed:', error);
+            console.error('Update notes failed:', error);
             return { success: false, error: 'Failed to update notes' };
         }
     };
@@ -341,7 +341,7 @@ export const TechPhonoProvider = ({ children }: { children?: ReactNode }) => {
             });
             return { success: true };
         } catch (error: any) {
-            console.error('❌ Submit feedback failed:', error);
+            console.error('Submit feedback failed:', error);
             return { success: false, error: 'Failed to submit feedback' };
         }
     };

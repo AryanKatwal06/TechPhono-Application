@@ -23,7 +23,7 @@ export const useSecureStorage = <T>(key: string, initialValue: T) => {
           setStoredValue(initialValue);
         }
       } catch (err) {
-        console.error(`❌ Error reading secure storage for key "${key}":`, err);
+        console.error(`Error reading secure storage for key "${key}":`, err);
         setError('Failed to read from secure storage');
         setStoredValue(initialValue);
       } finally {
@@ -43,7 +43,7 @@ export const useSecureStorage = <T>(key: string, initialValue: T) => {
       await AsyncStorage.setItem(key, encryptedValue);
       setStoredValue(value);
     } catch (err) {
-      console.error(`❌ Error writing to secure storage for key "${key}":`, err);
+      console.error(`Error writing to secure storage for key "${key}":`, err);
       setError('Failed to write to secure storage');
     }
   };
@@ -55,7 +55,7 @@ export const useSecureStorage = <T>(key: string, initialValue: T) => {
       await AsyncStorage.removeItem(key);
       setStoredValue(initialValue);
     } catch (err) {
-      console.error(`❌ Error removing from secure storage for key "${key}":`, err);
+      console.error(`Error removing from secure storage for key "${key}":`, err);
       setError('Failed to remove from secure storage');
     }
   };
@@ -69,7 +69,7 @@ export const useSecureStorage = <T>(key: string, initialValue: T) => {
       await AsyncStorage.multiRemove(secureKeys);
       setStoredValue(initialValue);
     } catch (err) {
-      console.error('❌ Error clearing secure storage:', err);
+      console.error('Error clearing secure storage:', err);
       setError('Failed to clear secure storage');
     }
   };

@@ -28,7 +28,7 @@ export class SessionManager {
       
       return true;
     } catch (error) {
-      console.error('❌ Error checking session validity:', error);
+      console.error('Error checking session validity:', error);
       return false;
     }
   }
@@ -45,7 +45,7 @@ export class SessionManager {
 
       await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
     } catch (error) {
-      console.error('❌ Error creating session:', error);
+      console.error('Error creating session:', error);
       throw error;
     }
   }
@@ -61,7 +61,7 @@ export class SessionManager {
 
       await AsyncStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
     } catch (error) {
-      console.error('❌ Error refreshing session:', error);
+      console.error('Error refreshing session:', error);
     }
   }
 
@@ -70,7 +70,7 @@ export class SessionManager {
       await AsyncStorage.removeItem(this.SESSION_KEY);
       await this.clearLockout();
     } catch (error) {
-      console.error('❌ Error clearing session:', error);
+      console.error('Error clearing session:', error);
     }
   }
 
@@ -94,7 +94,7 @@ export class SessionManager {
         isExpiringSoon
       };
     } catch (error) {
-      console.error('❌ Error getting session info:', error);
+      console.error('Error getting session info:', error);
       return null;
     }
   }
@@ -120,7 +120,7 @@ export class SessionManager {
 
       return true;
     } catch (error) {
-      console.error('❌ Error checking lockout:', error);
+      console.error('Error checking lockout:', error);
       return false;
     }
   }
@@ -137,7 +137,7 @@ export class SessionManager {
 
       await AsyncStorage.setItem(this.LOCKOUT_KEY, JSON.stringify(lockouts));
     } catch (error) {
-      console.error('❌ Error setting lockout:', error);
+      console.error('Error setting lockout:', error);
     }
   }
 
@@ -156,7 +156,7 @@ export class SessionManager {
       
       return Math.max(0, remaining);
     } catch (error) {
-      console.error('❌ Error getting lockout time:', error);
+      console.error('Error getting lockout time:', error);
       return 0;
     }
   }
@@ -174,7 +174,7 @@ export class SessionManager {
         await AsyncStorage.removeItem(this.LOCKOUT_KEY);
       }
     } catch (error) {
-      console.error('❌ Error clearing lockout:', error);
+      console.error('Error clearing lockout:', error);
     }
   }
 
@@ -203,7 +203,7 @@ export class SessionManager {
 
       await AsyncStorage.setItem(this.SECURITY_LOG_KEY, JSON.stringify(logs));
     } catch (error) {
-      console.error('❌ Error logging security event:', error);
+      console.error('Error logging security event:', error);
     }
   }
 
@@ -215,7 +215,7 @@ export class SessionManager {
       const logs = JSON.parse(logData);
       return logs.slice(-limit).reverse(); // Most recent first
     } catch (error) {
-      console.error('❌ Error getting security logs:', error);
+      console.error('Error getting security logs:', error);
       return [];
     }
   }
@@ -233,7 +233,7 @@ export class SessionManager {
       
       return deviceId;
     } catch (error) {
-      console.error('❌ Error getting device ID:', error);
+      console.error('Error getting device ID:', error);
       return 'unknown_device';
     }
   }
@@ -268,7 +268,7 @@ export class SessionManager {
         issues
       };
     } catch (error) {
-      console.error('❌ Error performing security checks:', error);
+      console.error('Error performing security checks:', error);
       return {
         isValid: false,
         issues: ['Security check failed']
@@ -311,7 +311,7 @@ export class SessionManager {
         }
       }
     } catch (error) {
-      console.error('❌ Error cleaning up expired data:', error);
+      console.error('Error cleaning up expired data:', error);
     }
   }
 }

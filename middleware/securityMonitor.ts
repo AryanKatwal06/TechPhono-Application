@@ -77,7 +77,7 @@ export class SecurityMonitor {
 
       return failedLogins.length;
     } catch (error) {
-      console.error('❌ Error getting failed logins:', error);
+      console.error('Error getting failed logins:', error);
       return 0;
     }
   }
@@ -98,7 +98,7 @@ export class SecurityMonitor {
 
       return suspiciousActivities.length;
     } catch (error) {
-      console.error('❌ Error getting suspicious activities:', error);
+      console.error('Error getting suspicious activities:', error);
       return 0;
     }
   }
@@ -121,7 +121,7 @@ export class SecurityMonitor {
 
       return dataAccesses.length;
     } catch (error) {
-      console.error('❌ Error getting data accesses:', error);
+      console.error('Error getting data accesses:', error);
       return 0;
     }
   }
@@ -148,7 +148,7 @@ export class SecurityMonitor {
     });
 
     // In production, send to security team
-    console.warn('🚨 SECURITY ALERTS:', alerts);
+    console.warn('SECURITY ALERTS:', alerts);
   }
 
   // Store security alert
@@ -170,7 +170,7 @@ export class SecurityMonitor {
       
       await AsyncStorage.setItem(this.MONITORING_KEY, JSON.stringify(monitoringData));
     } catch (error) {
-      console.error('❌ Error storing security alert:', error);
+      console.error('Error storing security alert:', error);
     }
   }
 
@@ -205,7 +205,7 @@ export class SecurityMonitor {
         suspiciousActivities: await this.getSuspiciousActivityCount('all')
       };
     } catch (error) {
-      console.error('❌ Error getting security dashboard:', error);
+      console.error('Error getting security dashboard:', error);
       return {
         totalEvents: 0,
         criticalEvents: 0,
@@ -269,7 +269,7 @@ export class SecurityMonitor {
       monitoringData.lockouts.push(lockoutData);
       await AsyncStorage.setItem(this.MONITORING_KEY, JSON.stringify(monitoringData));
     } catch (error) {
-      console.error('❌ Error initiating account lockout:', error);
+      console.error('Error initiating account lockout:', error);
     }
   }
 
@@ -293,7 +293,7 @@ export class SecurityMonitor {
       monitoringData.blockedIPs.push(blockData);
       await AsyncStorage.setItem(this.MONITORING_KEY, JSON.stringify(monitoringData));
     } catch (error) {
-      console.error('❌ Error blocking IP address:', error);
+      console.error('Error blocking IP address:', error);
     }
   }
 
@@ -313,7 +313,7 @@ export class SecurityMonitor {
 
       return !!activeLockout;
     } catch (error) {
-      console.error('❌ Error checking account lock:', error);
+      console.error('Error checking account lock:', error);
       return false;
     }
   }
@@ -334,7 +334,7 @@ export class SecurityMonitor {
 
       return !!activeBlock;
     } catch (error) {
-      console.error('❌ Error checking IP block:', error);
+      console.error('Error checking IP block:', error);
       return false;
     }
   }
@@ -374,7 +374,7 @@ export class SecurityMonitor {
         await AsyncStorage.setItem(this.MONITORING_KEY, JSON.stringify(monitoringData));
       }
     } catch (error) {
-      console.error('❌ Error cleaning up expired security data:', error);
+      console.error('Error cleaning up expired security data:', error);
     }
   }
 }

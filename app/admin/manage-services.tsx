@@ -17,12 +17,13 @@ import {
   Platform
 } from 'react-native';
 import { Haptics } from '@/utils/haptics';
+import typography from '@/constants/typography';
 
 type Service = {
   id: string;
   name: string;
   description: string;
-  price: number;
+  price: string;
   is_deleted: boolean;
   created_at: string;
 };
@@ -87,7 +88,7 @@ export default function ManageServices() {
     const serviceData = {
       name,
       description: desc,
-      price: Number(price),
+      price: price,
       is_deleted: false
     };
 
@@ -192,21 +193,23 @@ export default function ManageServices() {
 
         <TextInput
           placeholder="Service name (e.g. Screen Replacement)"
+          placeholderTextColor="#999"
           value={name}
           onChangeText={setName}
           style={styles.input}
         />
         <TextInput
           placeholder="One-line description"
+          placeholderTextColor="#999"
           value={desc}
           onChangeText={setDesc}
           style={styles.input}
         />
         <TextInput
           placeholder="Price (₹)"
+          placeholderTextColor="#999"
           value={price}
           onChangeText={setPrice}
-          keyboardType="numeric"
           style={styles.input}
         />
 
@@ -242,12 +245,12 @@ export default function ManageServices() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB', padding: 16, paddingTop: 50 },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, marginTop: 10 },
-  headerTitle: { fontSize: 22, fontWeight: '700', marginLeft: 12 },
+  headerTitle: { fontSize: typography.h3.mobile.fontSize, lineHeight: typography.h3.mobile.lineHeight, fontWeight: typography.h3.mobile.fontWeight, fontFamily: typography.h3.mobile.fontFamily, marginLeft: 12, color: '#111' },
   formCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 24, elevation: 3, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4 },
   formCardEdit: { borderWidth: 1.5, borderColor: '#059669' },
   formHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   formTitle: { fontSize: 16, fontWeight: '700', color: '#374151' },
-  input: { backgroundColor: '#F3F4F6', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#E5E7EB' },
+  input: { backgroundColor: '#F3F4F6', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#E5E7EB', color: '#111', fontSize: 16 },
   primaryBtn: { backgroundColor: '#2563EB', padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 6 },
   btnContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },

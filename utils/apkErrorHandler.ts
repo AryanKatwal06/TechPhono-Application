@@ -20,7 +20,7 @@ export class APKErrorHandler {
     this.lastErrorTime = now;
     
     // Log error with context
-    console.error('🚨 APK Error Handler:', {
+    console.error('APK Error Handler:', {
       error: error.message,
       stack: error.stack,
       errorCount: this.errorCount,
@@ -31,7 +31,7 @@ export class APKErrorHandler {
 
     // Prevent error cascades
     if (this.errorCount > this.MAX_ERRORS_PER_MINUTE) {
-      console.warn('⚠️ Too many errors detected, implementing error throttling');
+      console.warn('Too many errors detected; implementing error throttling');
       this.performEmergencyRecovery();
     }
   }
@@ -40,7 +40,7 @@ export class APKErrorHandler {
    * Handle Firebase initialization errors
    */
   static handleFirebaseError(error: any): string | null {
-    console.error('❌ Firebase Error:', error);
+    console.error('Firebase Error:', error);
     
     if (!error.code && !error.message) {
       return 'Firebase connection failed. Please check your internet connection.';
@@ -64,7 +64,7 @@ export class APKErrorHandler {
    * Handle network-related errors
    */
   static handleNetworkError(error: any): string | null {
-    console.error('🌐 Network Error:', error);
+    console.error('Network Error:', error);
     
     if (error.message?.includes('Network request failed')) {
       return 'Unable to connect. Please check your internet connection.';
@@ -81,7 +81,7 @@ export class APKErrorHandler {
    * Handle async storage errors
    */
   static handleStorageError(error: any): void {
-    console.error('💾 Storage Error:', error);
+    console.error('Storage Error:', error);
     
     // Clear corrupted storage if needed
     if (error.message?.includes('corrupted') || error.message?.includes('invalid')) {
@@ -93,7 +93,7 @@ export class APKErrorHandler {
    * Handle camera and media errors
    */
   static handleCameraError(error: any): string | null {
-    console.error('📸 Camera Error:', error);
+    console.error('Camera Error:', error);
     
     if (error.message?.includes('denied')) {
       return 'Camera permission denied. Please enable camera access in settings.';
@@ -110,7 +110,7 @@ export class APKErrorHandler {
    * Emergency recovery procedures
    */
   private static performEmergencyRecovery(): void {
-    console.warn('🆘 Performing emergency recovery...');
+    console.warn('Performing emergency recovery...');
     
     try {
       // Clear any potentially corrupted caches
@@ -120,7 +120,7 @@ export class APKErrorHandler {
       this.errorCount = 0;
       this.lastErrorTime = 0;
     } catch (recoveryError) {
-      console.error('❌ Emergency recovery failed:', recoveryError);
+      console.error('Emergency recovery failed:', recoveryError);
     }
   }
 
@@ -131,7 +131,7 @@ export class APKErrorHandler {
     try {
       // This would be implemented with AsyncStorage.clear() if needed
     } catch (error) {
-      console.error('❌ Failed to clear storage:', error);
+      console.error('Failed to clear storage:', error);
     }
   }
 
@@ -158,7 +158,7 @@ export class APKErrorHandler {
 
       return { valid: true };
     } catch (error) {
-      console.error('❌ App state validation failed:', error);
+      console.error('App state validation failed:', error);
       return { 
         valid: false, 
         error: 'App state validation failed' 
@@ -192,7 +192,7 @@ export class APKErrorHandler {
    * Generic error handler
    */
   private static handleGenericError(error: any): string {
-    console.error('❌ Generic Error:', error);
+    console.error('Generic Error:', error);
     
     if (error.message) {
       return error.message;
@@ -212,7 +212,7 @@ export class APKErrorHandler {
     try {
       navigationFunction();
     } catch (error) {
-      console.error('❌ Navigation Error:', error);
+      console.error('Navigation Error:', error);
       // Fallback navigation could be implemented here
     }
   }

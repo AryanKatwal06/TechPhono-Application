@@ -178,10 +178,10 @@ export class ErrorHandler {
 
       // Log to console in development
       if (SecurityConfig.isDevMode) {
-        console.error(`🔴 ${severity.toUpperCase()} ${category} Error:`, errorLog);
+        console.error(`${severity.toUpperCase()} ${category} Error:`, errorLog);
       }
     } catch (loggingError) {
-      console.error('❌ Failed to log error:', loggingError);
+      console.error('Failed to log error:', loggingError);
     }
   }
 
@@ -198,7 +198,7 @@ export class ErrorHandler {
 
       await AsyncStorage.setItem(this.ERROR_LOG_KEY, JSON.stringify(logs));
     } catch (error) {
-      console.error('❌ Failed to store error log:', error);
+      console.error('Failed to store error log:', error);
     }
   }
 
@@ -212,7 +212,7 @@ export class ErrorHandler {
         .sort((a: any, b: any) => b.timestamp - a.timestamp)
         .slice(0, limit);
     } catch (error) {
-      console.error('❌ Failed to get error logs:', error);
+      console.error('Failed to get error logs:', error);
       return [];
     }
   }

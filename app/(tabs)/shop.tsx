@@ -2,7 +2,7 @@ import type { Product } from '@/constants/products';
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { useTechPhono } from '@/context/TechPhonoContext';
 import { db } from '@/services/firebaseClient';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import type { CartItem } from '@/types/cart';
 import { Haptics } from '@/utils/haptics';
 import { useRouter } from '@/navigation/router';
@@ -187,7 +187,7 @@ export default function ShopScreen() {
           };
         })
         .sort((left, right) => right.createdAtMs - left.createdAtMs)
-        .map(({ createdAtMs, ...item }) => item);
+        .map(({ createdAtMs: _createdAtMs, ...item }) => item);
 
       setItems(mappedData);
       setLoading(false);

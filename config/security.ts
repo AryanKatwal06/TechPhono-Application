@@ -126,16 +126,11 @@ export class SecurityConfig {
 
   // Development/Development flags
   static get isDevMode(): boolean {
-    return readPublicConfig('devMode') === 'true';
+    return __DEV__ || readPublicConfig('devMode') === 'true';
   }
 
   static get isDebugMode(): boolean {
-    return readPublicConfig('debugMode') === 'true';
-  }
-
-  // Public application URL used for Firebase action links (must be whitelisted in Firebase Console)
-  static get appUrl(): string {
-    return readPublicConfig('appUrl') || '';
+    return __DEV__ || readPublicConfig('debugMode') === 'true';
   }
 
   // Security validation

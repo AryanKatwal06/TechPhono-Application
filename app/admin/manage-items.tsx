@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useAlert } from '@/context/AlertContext';
 import { CameraUtils } from '@/utils/cameraUtils';
+import typography from '@/constants/typography';
 
 // Define the asset type returned by the native image picker wrapper.
 type ImageAsset = {
@@ -249,18 +250,21 @@ export default function ManageItems() {
       <View style={styles.formCard}>
         <TextInput
           placeholder="Item name"
+          placeholderTextColor="#9CA3AF"
           value={name}
           onChangeText={setName}
           style={styles.input}
         />
         <TextInput
           placeholder="Short description"
+          placeholderTextColor="#9CA3AF"
           value={desc}
           onChangeText={setDesc}
           style={styles.input}
         />
         <TextInput
           placeholder="Price (₹)"
+          placeholderTextColor="#9CA3AF"
           value={price}
           onChangeText={setPrice}
           keyboardType="numeric"
@@ -316,22 +320,22 @@ export default function ManageItems() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 16, paddingTop: 50 },
+  container: { flex: 1, backgroundColor: '#F9FAFB', padding: 16, paddingTop: 50 },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, marginTop: 10 },
-  headerTitle: { fontSize: 20, fontWeight: '700', marginLeft: 12 },
-  formCard: { backgroundColor: '#F6F8FA', borderRadius: 14, padding: 16, marginBottom: 20 },
-  input: { backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#E5E7EB' },
+  headerTitle: { fontSize: typography.h3.mobile.fontSize, lineHeight: typography.h3.mobile.lineHeight, fontWeight: typography.h3.mobile.fontWeight, fontFamily: typography.h3.mobile.fontFamily, marginLeft: 12, color: '#111' },
+  formCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 20 },
+  input: { backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#E5E7EB', color: '#111', fontSize: typography.inputText.mobile.fontSize, fontFamily: typography.inputText.mobile.fontFamily },
   imageBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#E5E7EB', padding: 12, borderRadius: 10, marginBottom: 10 },
-  imageBtnText: { marginLeft: 8, fontWeight: '600', color: '#374151' },
+  imageBtnText: { marginLeft: 8, fontWeight: '600', color: '#374151', fontSize: typography.label.mobile.fontSize, fontFamily: typography.label.mobile.fontFamily },
   previewImage: { width: '100%', height: 200, borderRadius: 10, marginBottom: 8, resizeMode: 'cover', backgroundColor: '#f3f4f6' },
   imagePreviewContainer: { marginBottom: 10 },
-  imageInfoText: { fontSize: 12, color: '#6b7280', textAlign: 'center', fontStyle: 'italic' },
+  imageInfoText: { fontSize: typography.caption.mobile.fontSize, color: '#6b7280', textAlign: 'center', fontStyle: 'italic' },
   primaryBtn: { backgroundColor: '#2563EB', padding: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  btnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  btnText: { color: '#fff', fontWeight: '600', fontSize: typography.buttonText.mobile.fontSize, fontFamily: typography.buttonText.mobile.fontFamily },
   listCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: 14, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2, borderWidth: 1, borderColor: '#f0f0f0' },
   itemImage: { width: 60, height: 60, borderRadius: 10, backgroundColor: '#f3f4f6' },
-  cardTitle: { fontWeight: '600', fontSize: 16, color: '#111' },
-  cardDesc: { color: '#666', fontSize: 13, marginVertical: 2 },
-  cardPrice: { fontWeight: '600', color: '#16a34a' },
-  emptyText: { textAlign: 'center', color: '#888', marginTop: 20 },
+  cardTitle: { fontWeight: typography.h4.mobile.fontWeight, fontSize: typography.h4.mobile.fontSize, color: '#111', fontFamily: typography.h4.mobile.fontFamily },
+  cardDesc: { color: '#666', fontSize: typography.caption.mobile.fontSize, marginVertical: 2, fontFamily: typography.caption.mobile.fontFamily },
+  cardPrice: { fontWeight: typography.body.mobile.fontWeight, color: '#16a34a', fontSize: typography.body.mobile.fontSize, fontFamily: typography.body.mobile.fontFamily },
+  emptyText: { textAlign: 'center', color: '#6b7280', marginTop: 20, fontSize: typography.bodySmall.mobile.fontSize, fontFamily: typography.bodySmall.mobile.fontFamily },
 });

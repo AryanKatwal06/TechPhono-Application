@@ -29,7 +29,6 @@ import {
   TouchableOpacity,
   View,
   RefreshControl,
-  Platform,
   useWindowDimensions,
   StatusBar,
 } from 'react-native';
@@ -46,14 +45,14 @@ export default function HomeScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const [jobId, setJobId] = useState('');
-  const [authReady, setAuthReady] = useState(true);
+  const [authReady] = useState(true);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
 
   // Determine screen type
-  const isMobile = width < 600;
+  
   const isTablet = width >= 600 && width < 1024;
   const isDesktop = width >= 1024;
   const isLandscape = height < width;

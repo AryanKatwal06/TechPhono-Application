@@ -30,7 +30,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="techphono"/>
-        <data android:scheme="https" android:host="techphono-e47ec.web.app" android:pathPrefix="/"/>
+        <!-- Do not intercept https host links for password reset; leave web links to open in browser -->
       </intent-filter>
     </activity>
   </application>

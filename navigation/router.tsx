@@ -17,7 +17,6 @@ const ROUTE_NAMES = {
   authLogin: 'AuthLogin',
   authRegister: 'AuthRegister',
   authForgotPassword: 'AuthForgotPassword',
-  authCallback: 'AuthCallback',
   resetPassword: 'ResetPassword',
   mainTabs: 'MainTabs',
   tabHome: 'HomeTab',
@@ -55,7 +54,6 @@ function resolveTarget(input: RouteInput, extraParams?: Record<string, any>): Na
   if (pathOnly === '/auth/login') return { name: ROUTE_NAMES.authLogin, params: finalParams };
   if (pathOnly === '/auth/register') return { name: ROUTE_NAMES.authRegister, params: finalParams };
   if (pathOnly === '/auth/forgot-password') return { name: ROUTE_NAMES.authForgotPassword, params: finalParams };
-  if (pathOnly === '/auth/callback') return { name: ROUTE_NAMES.authCallback, params: finalParams };
   if (pathOnly === '/reset-password') return { name: ROUTE_NAMES.resetPassword, params: finalParams };
   if (pathOnly === '/booking') return { name: ROUTE_NAMES.booking, params: finalParams };
   if (pathOnly === '/track-repair') return { name: ROUTE_NAMES.trackRepair, params: finalParams };

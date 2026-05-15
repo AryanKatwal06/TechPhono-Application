@@ -1,6 +1,6 @@
 import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
 import { db } from '@/services/firebaseClient';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { Haptics } from '@/utils/haptics';
 import { useRouter } from '@/navigation/router';
 import { ArrowLeft, ChevronRight, Wrench } from 'lucide-react-native';
@@ -63,7 +63,7 @@ export default function ServicesScreen() {
           price: d.data().price,
         }))
         .sort((left, right) => right.createdAtMs - left.createdAtMs)
-        .map(({ createdAtMs, ...service }) => service);
+        .map(({ createdAtMs: _createdAtMs, ...service }) => service);
       setServices(data);
     } catch (err) {
       console.error('Error fetching services:', err);

@@ -1,5 +1,5 @@
 import AppLogo from '@/components/AppLogo';
-import { borderRadius, colors, shadows, spacing } from '@/constants/theme';
+import { borderRadius, colors, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useAlert } from '@/context/AlertContext';
 import { SecurityConfig } from '@/config/security';
@@ -16,7 +16,6 @@ import {
   TouchableOpacity,
   View,
   Dimensions,
-  ImageBackground,
 } from 'react-native';
 import AuthFeedback from '@/components/AuthFeedback';
 import LinearGradient from 'react-native-linear-gradient';
@@ -115,15 +114,25 @@ export default function LoginScreen() {
 
   
   const handleLogin = async () => {
+    console.log('[LoginScreen] Submit pressed', {
+      email: email.trim().toLowerCase(),
+      hasPassword: Boolean(password.trim()),
+    });
+
     if (!email || !password) {
+      console.log('[LoginScreen] Missing required fields');
       setError('Please fill in all required fields');
       return;
     }
+
     setLoading(true);
     setError('');
+
     try {
+      console.log('[LoginScreen] Calling AuthContext.signIn');
       const errorMsg = await signIn(email.trim(), password);
       if (errorMsg) {
+        console.log('[LoginScreen] Sign in returned an error', { errorMsg });
         setError(errorMsg);
         alert.error('Login Failed', errorMsg);
         setLoading(false);
@@ -131,16 +140,19 @@ export default function LoginScreen() {
       }
       // Enhanced role-based redirection with fallback
       const targetIsAdmin = SecurityConfig.isAdminEmail(email);
+      const targetRoute = targetIsAdmin ? '/admin' : '/(tabs)';
+
+      console.log('[LoginScreen] Sign in succeeded, redirecting', {
+        email: email.trim().toLowerCase(),
+        targetRoute,
+      });
       
       // Add a small delay to ensure user state is updated in AuthContext
       setTimeout(() => {
-        if (targetIsAdmin) {
-          router.replace('/admin');
-        } else {
-          router.replace('/(tabs)');
-        }
+        router.replace(targetRoute);
       }, 100);
     } catch {
+      console.log('[LoginScreen] Unexpected login failure');
       setError('An unexpected error occurred');
       setLoading(false);
     }

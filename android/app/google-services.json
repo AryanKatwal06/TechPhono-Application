@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "694972508985",
+    "project_id": "techphono-e47ec",
+    "storage_bucket": "techphono-e47ec.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:694972508985:android:024ed907f85aa8dffc56e8",
+        "android_client_info": {
+          "package_name": "com.techphono.repair"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4ouF9Cn2MyMGjXbZyTQUSw2ifEButMKg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

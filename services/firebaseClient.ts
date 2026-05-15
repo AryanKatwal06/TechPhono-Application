@@ -15,10 +15,28 @@ const firebaseConfig = {
   appId: SecurityConfig.firebaseAppId,
 };
 
+const redactApiKey = (key: string): string => {
+  if (!key) return '[missing]';
+  if (key.length <= 8) return `${key.slice(0, 4)}…`;
+  return `${key.slice(0, 8)}…${key.slice(-4)}`;
+};
+
+console.log('[Firebase] Bootstrapping client', {
+  projectId: firebaseConfig.projectId,
+  authDomain: firebaseConfig.authDomain,
+  storageBucket: firebaseConfig.storageBucket,
+  appId: firebaseConfig.appId,
+  apiKey: redactApiKey(firebaseConfig.apiKey),
+  devMode: SecurityConfig.isDevMode,
+  debugMode: SecurityConfig.isDebugMode,
+});
+
 // Initialize Firebase app (prevent re-initialization)
 let app: FirebaseApp | any;
 try {
+  console.log('[Firebase] Initializing app instance');
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  console.log('[Firebase] App ready', { existingApps: getApps().length });
 } catch (error) {
   console.error('Firebase app initialization failed:', error);
   app = {
@@ -31,12 +49,15 @@ try {
 // Initialize Firebase Auth with AsyncStorage persistence for React Native
 let auth: Auth | any;
 try {
+  console.log('[Firebase] Initializing auth persistence');
   auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage),
   });
+  console.log('[Firebase] Auth ready');
 } catch (error) {
   console.error('Firebase Auth initialization failed:', error);
   try {
+    console.log('[Firebase] Falling back to existing auth instance');
     auth = getAuth(app) as any;
   } catch (authError) {
     console.error('Failed to get existing Firebase Auth instance:', authError);
@@ -53,7 +74,9 @@ try {
 // Initialize Firestore
 let db: Firestore | any;
 try {
+  console.log('[Firebase] Initializing Firestore');
   db = getFirestore(app);
+  console.log('[Firebase] Firestore ready');
 } catch (error) {
   console.error('Firestore initialization failed:', error);
   db = {
@@ -75,7 +98,9 @@ try {
 // Initialize Firebase Storage
 let storage: FirebaseStorage | any;
 try {
+  console.log('[Firebase] Initializing Storage');
   storage = getStorage(app);
+  console.log('[Firebase] Storage ready');
 } catch (error) {
   console.error('Firebase Storage initialization failed:', error);
   storage = {
